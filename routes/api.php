@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProspectActivityController;
 use App\Http\Controllers\Api\V1\ProspectController;
 use App\Http\Controllers\Api\V1\ProspectFollowUpController;
+use App\Http\Controllers\Api\V1\ProspectFormOptionController;
 use App\Http\Controllers\Api\V1\ProspectStageController;
 use App\Http\Controllers\Api\V1\SalesStageController;
 use App\Http\Controllers\Api\V1\SystemController;
@@ -44,6 +45,7 @@ Route::prefix('v1')
         Route::get('activities', [ActivityController::class, 'index'])->name('activities.index');
         Route::post('activities', [ActivityController::class, 'store'])->name('activities.store');
         Route::get('activities/{activity}', [ActivityController::class, 'show'])->name('activities.show');
+        Route::post('activities/{activity}/link-follow-up', [ActivityController::class, 'linkFollowUp'])->name('activities.link-follow-up');
         Route::post('activities/{activity}/link-prospect', [ActivityController::class, 'linkProspect'])->name('activities.link-prospect');
 
         // Follow-ups
@@ -62,4 +64,7 @@ Route::prefix('v1')
 
         Route::post('loss-reasons/reorder', [LossReasonController::class, 'reorder'])->name('loss-reasons.reorder');
         Route::apiResource('loss-reasons', LossReasonController::class)->parameters(['loss-reasons' => 'lossReason']);
+
+        Route::post('prospect-form-options/reorder', [ProspectFormOptionController::class, 'reorder'])->name('prospect-form-options.reorder');
+        Route::apiResource('prospect-form-options', ProspectFormOptionController::class)->parameters(['prospect-form-options' => 'prospectFormOption']);
     });

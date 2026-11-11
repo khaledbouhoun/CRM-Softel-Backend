@@ -4,6 +4,7 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Models\Prospect;
 use Closure;
+use Illuminate\Validation\Validator;
 
 /**
  * Partial update: only submitted fields change. If product_ids is submitted it
@@ -27,6 +28,13 @@ class UpdateProspectRequest extends ApiFormRequest
             'product_ids' => ['sometimes', 'array', 'max:100'],
             'product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v) {
+            StoreProspectRequest::validateConfigurableDetails($this->all(), $v);
+        });
     }
 
     public function messages(): array

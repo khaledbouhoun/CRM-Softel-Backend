@@ -8,6 +8,13 @@ use Illuminate\Validation\Rule;
 /** Partial update of a pending follow-up (status changes use complete/cancel). */
 class UpdateFollowUpRequest extends ApiFormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('activity_type') && $this->input('activity_type') === 'appointment') {
+            $this->merge(['activity_type' => 'meeting']);
+        }
+    }
+
     public function rules(): array
     {
         return [

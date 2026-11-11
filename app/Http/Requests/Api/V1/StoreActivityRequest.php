@@ -8,6 +8,18 @@ use Illuminate\Validation\Rule;
 /** Body of POST /prospects/{id}/activities (the prospect comes from the URL). */
 class StoreActivityRequest extends ApiFormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('type')) {
+            $type = $this->input('type');
+            if ($type === 'appointment') {
+                $this->merge(['type' => 'meeting']);
+            } elseif ($type === 'note') {
+                $this->merge(['type' => 'other']);
+            }
+        }
+    }
+
     public function rules(): array
     {
         return [

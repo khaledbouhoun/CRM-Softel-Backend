@@ -10,10 +10,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\IndexFollowUpRequest;
 use App\Http\Resources\Api\V1\LossReasonResource;
 use App\Http\Resources\Api\V1\ProductResource;
+use App\Http\Resources\Api\V1\ProspectFormOptionResource;
 use App\Http\Resources\Api\V1\SalesStageResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\LossReason;
 use App\Models\Product;
+use App\Models\ProspectFormOption;
 use App\Models\SalesStage;
 use App\Models\EmployeeSession;
 use Illuminate\Http\Request;
@@ -55,13 +57,18 @@ class SystemController extends Controller
     {
         $resolve = fn ($items, string $resource) => $items->map(fn ($m) => (new $resource($m))->resolve())->all();
 
+        $formOptions = ProspectFormOption::query()->ordered()->get();
+        $formOptionsByType = $formOptions->groupBy('type');
+
         return ApiResponse::success([
             'stage_types' => StageType::values(),
             'activity_types' => ActivityType::values(),
             'follow_up_activity_types' => FollowUpActivityType::values(),
-            'business_activities' => config('crm.catalogs.business_activities'),
-            'prospect_sources' => config('crm.catalogs.prospect_sources'),
-            'previous_software' => config('crm.catalogs.previous_software'),
+            'business_activities' => $formOptionsByType->get('business_activity', collect())->where('is_active', true)->pluck('name')->values()->all() ?: config('crm.catalogs.business_activities', []),
+            'prospect_sources' => $formOptionsByType->get('source', collect())->where('is_active', true)->pluck('name')->values()->all() ?: config('crm.catalogs.prospect_sources', []),
+            'previous_software' => $formOptionsByType->get('previous_software', collect())->where('is_active', true)->pluck('name')->values()->all() ?: config('crm.catalogs.previous_software', []),
+            'professions' => $formOptionsByType->get('profession', collect())->where('is_active', true)->pluck('name')->values()->all(),
+            'prospect_form_options' => $resolve($formOptions, ProspectFormOptionResource::class),
             'follow_up_statuses' => FollowUpStatus::values(),
             'follow_up_scopes' => IndexFollowUpRequest::SCOPES,
             'sales_stages' => $resolve(SalesStage::query()->ordered()->get(), SalesStageResource::class),

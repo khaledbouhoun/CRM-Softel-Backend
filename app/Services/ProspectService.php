@@ -12,7 +12,10 @@ class ProspectService
 {
     private const PROFILE_FIELDS = [
         'name', 'contact_person', 'phone', 'email', 'address', 'city',
-        'business_activity', 'source', 'source_other', 'previous_software', 'notes',
+        'business_activity', 'business_activity_details',
+        'profession', 'profession_details',
+        'source', 'source_details', 'source_other',
+        'previous_software', 'previous_software_details', 'notes',
     ];
 
     public function __construct(private readonly StageTransitionService $transitions) {}
@@ -68,13 +71,22 @@ class ProspectService
         });
     }
 
-    /** source_other only makes sense for source = "other"; blank text is stored as null. */
+    /** Trims blank text to null and synchronises source details with legacy source_other. */
     private function normaliseSource(Prospect $prospect): void
     {
-        foreach (['business_activity', 'source', 'source_other', 'previous_software'] as $field) {
+        foreach ([
+            'business_activity', 'business_activity_details',
+            'profession', 'profession_details',
+            'source', 'source_details', 'source_other',
+            'previous_software', 'previous_software_details',
+        ] as $field) {
             if (is_string($prospect->{$field}) && trim($prospect->{$field}) === '') {
                 $prospect->{$field} = null;
             }
+        }
+
+        if ($prospect->source_other !== null && $prospect->source_details === null) {
+            $prospect->source_details = $prospect->source_other;
         }
 
         if ($prospect->source !== 'other') {

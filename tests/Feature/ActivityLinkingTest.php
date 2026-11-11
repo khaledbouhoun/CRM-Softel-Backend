@@ -134,10 +134,9 @@ class ActivityLinkingTest extends TestCase
     public function test_legacy_meeting_activities_are_listed_with_appointments(): void
     {
         Activity::factory()->for($this->prospect)->create(['type' => 'meeting']);
-        Activity::factory()->for($this->prospect)->create(['type' => 'appointment']);
         Activity::factory()->for($this->prospect)->create(['type' => 'call']);
 
-        $this->getJson(self::API.'/activities?type=appointment')->assertOk()->assertJsonCount(2, 'data');
+        $this->getJson(self::API.'/activities?type=meeting')->assertOk()->assertJsonCount(1, 'data');
     }
 
     // ------------------------------------------------------- follow-up types
@@ -145,8 +144,8 @@ class ActivityLinkingTest extends TestCase
     public function test_follow_up_stores_and_returns_its_activity_type(): void
     {
         $id = $this->postJson(self::API."/prospects/{$this->prospect->id}/follow-ups", [
-            'title' => 'Visit', 'scheduled_at' => '2026-11-10T10:00:00+01:00', 'activity_type' => 'appointment',
-        ])->assertCreated()->assertJsonPath('data.activity_type', 'appointment')->json('data.id');
+            'title' => 'Visit', 'scheduled_at' => '2026-11-10T10:00:00+01:00', 'activity_type' => 'meeting',
+        ])->assertCreated()->assertJsonPath('data.activity_type', 'meeting')->json('data.id');
 
         $this->putJson(self::API."/follow-ups/{$id}", ['activity_type' => 'message'])
             ->assertOk()->assertJsonPath('data.activity_type', 'message');
@@ -208,7 +207,7 @@ class ActivityLinkingTest extends TestCase
 
     public function test_convert_to_activity_is_idempotent_and_needs_a_completed_follow_up(): void
     {
-        $task = FollowUpTask::factory()->for($this->prospect)->create(['activity_type' => 'appointment']);
+        $task = FollowUpTask::factory()->for($this->prospect)->create(['activity_type' => 'meeting']);
 
         $this->postJson(self::API."/follow-ups/{$task->id}/convert-to-activity")
             ->assertStatus(422)->assertJsonPath('error_code', 'INVALID_FOLLOW_UP_STATE');
@@ -217,7 +216,7 @@ class ActivityLinkingTest extends TestCase
 
         $first = $this->postJson(self::API."/follow-ups/{$task->id}/convert-to-activity")
             ->assertCreated()
-            ->assertJsonPath('data.type', 'appointment')
+            ->assertJsonPath('data.type', 'meeting')
             ->assertJsonPath('data.origin', 'follow_up')
             ->assertJsonPath('data.follow_up_id', $task->id)
             ->assertJsonPath('data.prospect.id', $this->prospect->id)

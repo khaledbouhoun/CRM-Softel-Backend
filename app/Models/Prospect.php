@@ -28,9 +28,14 @@ class Prospect extends Model
         'address',
         'city',
         'business_activity',
+        'business_activity_details',
+        'profession',
+        'profession_details',
         'source',
+        'source_details',
         'source_other',
         'previous_software',
+        'previous_software_details',
         'notes',
     ];
 

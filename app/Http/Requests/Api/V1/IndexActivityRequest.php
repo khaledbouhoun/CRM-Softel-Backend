@@ -7,6 +7,18 @@ use Illuminate\Validation\Rule;
 
 class IndexActivityRequest extends ApiFormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('type')) {
+            $type = $this->input('type');
+            if ($type === 'appointment') {
+                $this->merge(['type' => 'meeting']);
+            } elseif ($type === 'note') {
+                $this->merge(['type' => 'other']);
+            }
+        }
+    }
+
     public function rules(): array
     {
         return [

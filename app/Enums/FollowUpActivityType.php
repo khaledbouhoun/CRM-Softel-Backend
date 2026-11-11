@@ -6,8 +6,9 @@ namespace App\Enums;
 enum FollowUpActivityType: string
 {
     case Call = 'call';
-    case Appointment = 'appointment';
+    case Meeting = 'meeting';
     case Message = 'message';
+    case Other = 'other';
 
     /** @return list<string> */
     public static function values(): array

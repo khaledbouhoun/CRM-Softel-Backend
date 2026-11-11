@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             SalesStageSeeder::class,
             LossReasonSeeder::class,
             ProductSeeder::class,
+            ProspectFormOptionSeeder::class,
         ]);
     }
 }

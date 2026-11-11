@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\IndexActivityRequest;
+use App\Http\Requests\Api\V1\LinkActivityFollowUpRequest;
 use App\Http\Requests\Api\V1\LinkActivityRequest;
 use App\Http\Requests\Api\V1\StoreNativeActivityRequest;
 use App\Http\Resources\Api\V1\ActivityResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Activity;
+use App\Models\FollowUpTask;
 use App\Models\Prospect;
 use App\Repositories\ActivityRepository;
 use App\Services\ActivityService;
@@ -28,17 +30,28 @@ class ActivityController extends Controller
     public function show(Activity $activity): JsonResponse
     {
         return ApiResponse::success(
-            new ActivityResource($activity->load(['prospect.salesStage', 'followUp'])),
+            new ActivityResource($activity->load(['prospect.salesStage', 'followUp.prospect.salesStage'])),
             'Activity retrieved successfully.',
         );
     }
 
-    /** Native activity: the prospect is optional. */
+    /** Native activity: the prospect or follow-up is optional. */
     public function store(StoreNativeActivityRequest $request, ActivityService $activities): JsonResponse
     {
         return ApiResponse::created(
             new ActivityResource($activities->createNative($request->validated())),
             'Activity created successfully.',
+        );
+    }
+
+    /** Links an activity to an existing follow-up. */
+    public function linkFollowUp(LinkActivityFollowUpRequest $request, Activity $activity, ActivityService $activities): JsonResponse
+    {
+        $followUp = FollowUpTask::query()->findOrFail($request->followUpId());
+
+        return ApiResponse::success(
+            new ActivityResource($activities->linkFollowUp($activity, $followUp)),
+            'Activity linked to the follow-up successfully.',
         );
     }
 

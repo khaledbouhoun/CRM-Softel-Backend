@@ -41,4 +41,42 @@ return [
     // ['name' => 'Logiciel de gestion commerciale', 'description' => null],
     'products' => [],
 
+    // Prospect form configurable list starter options
+    'prospect_form_options' => [
+        'source' => [
+            ['name' => 'Facebook', 'requires_details' => true],
+            ['name' => 'Instagram', 'requires_details' => true],
+            ['name' => 'Friend', 'requires_details' => false],
+            ['name' => 'Customer referral', 'requires_details' => false],
+            ['name' => 'Website', 'requires_details' => false],
+            ['name' => 'Phone call', 'requires_details' => false],
+            ['name' => 'Other', 'requires_details' => true],
+        ],
+        'previous_software' => [
+            ['name' => 'Sage', 'requires_details' => false],
+            ['name' => 'PC Compta', 'requires_details' => false],
+            ['name' => 'Excel', 'requires_details' => false],
+            ['name' => 'Other software', 'requires_details' => true],
+            ['name' => 'None', 'requires_details' => false],
+            ['name' => 'Other', 'requires_details' => true],
+        ],
+        'business_activity' => [
+            ['name' => 'Production', 'requires_details' => false],
+            ['name' => 'Wholesale', 'requires_details' => false],
+            ['name' => 'Commerce', 'requires_details' => false],
+            ['name' => 'Construction', 'requires_details' => false],
+            ['name' => 'Services', 'requires_details' => false],
+            ['name' => 'Import', 'requires_details' => false],
+            ['name' => 'Other', 'requires_details' => true],
+        ],
+        'profession' => [
+            ['name' => 'Electronics', 'requires_details' => false],
+            ['name' => 'Cars', 'requires_details' => false],
+            ['name' => 'Food', 'requires_details' => false],
+            ['name' => 'Clothing', 'requires_details' => false],
+            ['name' => 'IT & Tech', 'requires_details' => false],
+            ['name' => 'Other', 'requires_details' => true],
+        ],
+    ],
+
 ];

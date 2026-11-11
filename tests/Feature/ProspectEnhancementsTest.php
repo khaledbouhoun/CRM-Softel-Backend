@@ -119,7 +119,7 @@ class ProspectEnhancementsTest extends TestCase
     {
         $this->getJson(self::API.'/lookups')
             ->assertOk()
-            ->assertJsonPath('data.follow_up_activity_types', ['call', 'appointment', 'message'])
+            ->assertJsonPath('data.follow_up_activity_types', ['call', 'meeting', 'message', 'other'])
             ->assertJsonPath('data.prospect_sources.0', 'facebook')
             ->assertJsonPath('data.business_activities.0', 'wholesale')
             ->assertJsonPath('data.previous_software.0', 'sage');

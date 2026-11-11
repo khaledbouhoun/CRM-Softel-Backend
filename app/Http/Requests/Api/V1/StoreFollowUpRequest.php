@@ -7,6 +7,13 @@ use Illuminate\Validation\Rule;
 
 class StoreFollowUpRequest extends ApiFormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('activity_type') && $this->input('activity_type') === 'appointment') {
+            $this->merge(['activity_type' => 'meeting']);
+        }
+    }
+
     public function rules(): array
     {
         return [

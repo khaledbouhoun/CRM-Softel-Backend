@@ -8,6 +8,13 @@ use Illuminate\Validation\Rule;
 /** Body of POST /follow-ups/{id}/convert-to-activity (all fields optional). */
 class ConvertFollowUpRequest extends ApiFormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('activity_type') && $this->input('activity_type') === 'appointment') {
+            $this->merge(['activity_type' => 'meeting']);
+        }
+    }
+
     public function rules(): array
     {
         return self::activityRules();

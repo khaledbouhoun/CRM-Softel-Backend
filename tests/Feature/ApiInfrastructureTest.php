@@ -19,7 +19,7 @@ class ApiInfrastructureTest extends TestCase
         $this->getJson(self::API.'/lookups')
             ->assertOk()
             ->assertJsonPath('data.stage_types', ['open', 'won', 'lost'])
-            ->assertJsonPath('data.activity_types', ['call', 'meeting', 'appointment', 'message', 'note', 'other'])
+            ->assertJsonPath('data.activity_types', ['call', 'meeting', 'message', 'other'])
             ->assertJsonPath('data.follow_up_statuses', ['pending', 'completed', 'cancelled'])
             ->assertJsonCount(4, 'data.sales_stages')
             ->assertJsonCount(2, 'data.loss_reasons');

@@ -22,6 +22,8 @@ class Activity extends Model
         'description',
         'outcome',
         'activity_at',
+        'prospect_id',
+        'follow_up_task_id',
     ];
 
     protected function casts(): array
@@ -39,7 +41,7 @@ class Activity extends Model
         return $this->belongsTo(Prospect::class)->withTrashed();
     }
 
-    /** Set when the activity was created by converting a follow-up. */
+    /** Set when the activity is linked to a follow-up. */
     public function followUp(): BelongsTo
     {
         return $this->belongsTo(FollowUpTask::class, 'follow_up_task_id');
@@ -47,10 +49,15 @@ class Activity extends Model
 
     public function isLinked(): bool
     {
-        return $this->prospect_id !== null;
+        return $this->follow_up_task_id !== null || $this->prospect_id !== null;
     }
 
-    /** follow_up = converted from a follow-up, direct = created on its own. */
+    public function isLinkedToFollowUp(): bool
+    {
+        return $this->follow_up_task_id !== null;
+    }
+
+    /** follow_up = linked to a follow-up, direct = created on its own. */
     public function origin(): string
     {
         return $this->follow_up_task_id !== null ? 'follow_up' : 'direct';
