@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\LocalDateTime;
 use App\Enums\FollowUpStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -38,6 +39,32 @@ class Prospect extends Model
         'previous_software_details',
         'notes',
     ];
+
+    protected function casts(): array
+    {
+        return ['converted_at' => LocalDateTime::class];
+    }
+
+    /** A customer is a prospect that went through the explicit conversion. */
+    public function isCustomer(): bool
+    {
+        return $this->converted_at !== null;
+    }
+
+    public function portalAccounts(): HasMany
+    {
+        return $this->hasMany(PortalAccount::class);
+    }
+
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
+    }
+
+    public function trials(): HasMany
+    {
+        return $this->hasMany(Trial::class);
+    }
 
     public function salesStage(): BelongsTo
     {
