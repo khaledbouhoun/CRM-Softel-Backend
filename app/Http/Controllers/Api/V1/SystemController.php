@@ -8,18 +8,24 @@ use App\Enums\FollowUpStatus;
 use App\Enums\StageType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\IndexFollowUpRequest;
+use App\Http\Resources\Api\V1\ConfigEntityResource;
 use App\Http\Resources\Api\V1\LossReasonResource;
 use App\Http\Resources\Api\V1\ProductResource;
 use App\Http\Resources\Api\V1\ProspectFormOptionResource;
 use App\Http\Resources\Api\V1\SalesStageResource;
 use App\Http\Responses\ApiResponse;
+use App\Models\AppointmentType;
+use App\Models\EmployeeSession;
+use App\Models\InterventionPriority;
+use App\Models\InterventionStatus;
+use App\Models\InterventionType;
 use App\Models\LossReason;
 use App\Models\Product;
 use App\Models\ProspectFormOption;
 use App\Models\SalesStage;
-use App\Models\EmployeeSession;
-use Illuminate\Http\Request;
+use App\Services\SchedulingService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -74,6 +80,11 @@ class SystemController extends Controller
             'sales_stages' => $resolve(SalesStage::query()->ordered()->get(), SalesStageResource::class),
             'loss_reasons' => $resolve(LossReason::query()->ordered()->get(), LossReasonResource::class),
             'products' => $resolve(Product::query()->orderBy('name')->orderBy('id')->get(), ProductResource::class),
+            'appointment_types' => AppointmentType::query()->orderBy('sort_order')->get()->map(fn ($m) => (new ConfigEntityResource($m))->resolve())->all(),
+            'intervention_types' => InterventionType::query()->orderBy('sort_order')->get()->map(fn ($m) => (new ConfigEntityResource($m))->resolve())->all(),
+            'intervention_statuses' => InterventionStatus::query()->orderBy('sort_order')->get()->map(fn ($m) => (new ConfigEntityResource($m))->resolve())->all(),
+            'intervention_priorities' => InterventionPriority::query()->orderBy('sort_order')->get()->map(fn ($m) => (new ConfigEntityResource($m))->resolve())->all(),
+            'scheduling' => app(SchedulingService::class)->settings(),
             'settings' => [
                 'timezone' => config('app.timezone'),
                 'default_per_page' => config('crm.pagination.default_per_page'),
@@ -98,7 +109,7 @@ class SystemController extends Controller
             ['employee_id' => $validated['employee_id']],
             [
                 'username' => $validated['username'],
-                'device_name' => $validated['device_name'] ?? ('PC-' . substr(md5($ip), 0, 6)),
+                'device_name' => $validated['device_name'] ?? ('PC-'.substr(md5($ip), 0, 6)),
                 'ip_address' => $ip,
                 'last_request_path' => $validated['last_request_path'] ?? '/api/v1/system/heartbeat',
                 'last_heartbeat_at' => now(),
