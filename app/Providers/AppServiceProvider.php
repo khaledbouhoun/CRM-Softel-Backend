@@ -23,8 +23,11 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('crm-api', fn (Request $request) => Limit::perMinute(config('crm.rate_limit_per_minute'))->by($request->ip()));
 
+        RateLimiter::for('portal-api', fn (Request $request) => Limit::perMinute(config('crm.portal.rate_limit_per_minute'))->by($request->ip()));
+        RateLimiter::for('portal-login', fn (Request $request) => Limit::perMinute(config('crm.portal.login_attempts_per_minute'))->by($request->ip().'|'.strtolower((string) $request->input('email'))));
+
         // Numeric ids only: /prospects/abc is a 404, not a database error.
-        foreach (['prospect', 'followUp', 'product', 'salesStage', 'lossReason'] as $parameter) {
+        foreach (['prospect', 'followUp', 'product', 'salesStage', 'lossReason', 'appointment', 'series', 'trial', 'intervention', 'portalRequest'] as $parameter) {
             Route::pattern($parameter, '[0-9]+');
         }
     }
