@@ -23,8 +23,8 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="APP_TIMEZONE" value="Africa/Algiers"/>
-        <env name="DB_CONNECTION" value="mysql"/>
-        <env name="DB_DATABASE" value="softel_crm_test"/>
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
         <env name="CRM_ALLOWED_NETWORKS" value="127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"/>
         <env name="CRM_ALLOW_REOPENING_CLOSED" value="true"/>
         <env name="MAIL_MAILER" value="array"/>
