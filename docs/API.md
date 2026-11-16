@@ -920,3 +920,7 @@ Only if never referenced by a prospect or stage history, else `409 RESOURCE_IN_U
 | GET/PUT/PATCH/DELETE | `/loss-reasons/{id}` | detail / update / delete |
 
 `php artisan route:list --path=api` prints the same list from the code.
+
+---
+
+Customer journey additions (conversion, appointments/holds, trials, interventions, scheduling settings, customer portal API): see [PORTAL_AND_WORKFLOWS.md](PORTAL_AND_WORKFLOWS.md).
