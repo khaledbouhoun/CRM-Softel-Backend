@@ -51,6 +51,43 @@ return [
         'previous_software' => ['sage', 'pc_compta', 'excel', 'other_software', 'none', 'other'],
     ],
 
+    /*
+    | Defaults for the scheduling rules. Every key can be overridden from the
+    | CRM settings screen (stored in crm_settings); nothing here is a business
+    | constant. working_days uses 0 = Sunday ... 6 = Saturday (Algerian week by default).
+    */
+    'scheduling' => [
+        'working_days' => [0, 1, 2, 3, 4],
+        'work_start' => '09:00',
+        'work_end' => '16:00',
+        'slot_minutes' => 60,
+        'hold_expiry_minutes' => 1440,
+        'booking_horizon_days' => 30,
+        'min_notice_hours' => 12,
+        'demo_capacity' => 1,
+        'accompaniment_occurrences' => 4,
+        'accompaniment_interval_days' => 7,
+        'trial_default_days' => 14,
+        'whatsapp_country_code' => '213',
+    ],
+
+    /*
+    | Customer portal surface (/api/portal/v1). It is NOT protected by the LAN
+    | allow-list: it is called server-to-server by the public website with the
+    | shared service key, and by customer bearer tokens issued by this API.
+    */
+    'portal' => [
+        'service_key' => env('CRM_PORTAL_SERVICE_KEY'),
+        /* Optional extra IP/CIDR allow-list for the website server. Empty = key only. */
+        'allowed_networks' => array_values(array_filter(array_map('trim', explode(',', (string) env('CRM_PORTAL_ALLOWED_NETWORKS', ''))))),
+        'token_ttl_days' => (int) env('CRM_PORTAL_TOKEN_TTL_DAYS', 30),
+        'reset_ttl_minutes' => (int) env('CRM_PORTAL_RESET_TTL_MINUTES', 60),
+        'rate_limit_per_minute' => (int) env('CRM_PORTAL_RATE_LIMIT_PER_MINUTE', 120),
+        'login_attempts_per_minute' => (int) env('CRM_PORTAL_LOGIN_ATTEMPTS', 5),
+        'upload_max_kb' => 5120,
+        'upload_mimes' => ['jpg', 'jpeg', 'png', 'pdf', 'txt', 'zip'],
+    ],
+
     'dashboard' => [
         'recent_activities_limit' => 10,
         /* "Upcoming" follow-ups counted on the dashboard: the next N days after today. */
