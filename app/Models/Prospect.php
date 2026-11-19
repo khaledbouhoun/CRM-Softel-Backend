@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Casts\LocalDateTime;
 use App\Enums\FollowUpStatus;
+use App\Enums\ProductRelation;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +28,7 @@ class Prospect extends Model
         'contact_person',
         'phone',
         'email',
+        'language',
         'address',
         'city',
         'business_activity',
@@ -43,6 +46,22 @@ class Prospect extends Model
     protected function casts(): array
     {
         return ['converted_at' => LocalDateTime::class];
+    }
+
+    /** Prospects/customers linked to a product (interest and/or ownership, see ProductRelation). */
+    public function scopeForProduct(Builder $query, int $productId, ProductRelation|string $relation = ProductRelation::Linked): Builder
+    {
+        $relation = ProductRelation::from($relation instanceof ProductRelation ? $relation->value : $relation);
+
+        return $query->whereHas('products', function (Builder $q) use ($productId, $relation) {
+            $q->where('products.id', $productId);
+
+            match ($relation) {
+                ProductRelation::Owned => $q->whereNotNull('prospect_products.purchased_at'),
+                ProductRelation::Interested => $q->whereNull('prospect_products.purchased_at'),
+                ProductRelation::Linked => null,
+            };
+        });
     }
 
     /** A customer is a prospect that went through the explicit conversion. */

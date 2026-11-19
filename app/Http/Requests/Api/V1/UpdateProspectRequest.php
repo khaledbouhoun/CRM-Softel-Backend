@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1;
 
 use App\Models\Prospect;
+use App\Rules\OneProductPerPack;
 use Closure;
 use Illuminate\Validation\Validator;
 
@@ -25,7 +26,7 @@ class UpdateProspectRequest extends ApiFormRequest
             'sales_stage_id' => ['sometimes', $this->unchanged('sales_stage_id')],
             'loss_reason_id' => ['sometimes', $this->unchanged('loss_reason_id')],
             'loss_note' => ['sometimes', $this->unchanged('loss_note')],
-            'product_ids' => ['sometimes', 'array', 'max:100'],
+            'product_ids' => ['sometimes', 'array', 'max:100', new OneProductPerPack],
             'product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
         ];
     }

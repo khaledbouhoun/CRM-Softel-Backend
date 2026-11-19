@@ -23,7 +23,7 @@ class CustomerLifecycleTest extends TestCase
     {
         parent::setUp();
         $this->setUpPortal();
-        $this->product = Product::factory()->create(['name' => 'GestCom']);
+        $this->product = Product::factory()->create(['name' => 'GestCom', 'demo_url' => 'https://trial.example.test/abc']);
     }
 
     private function type(string $code): AppointmentType
@@ -203,7 +203,7 @@ class CustomerLifecycleTest extends TestCase
     {
         [$prospect, , $headers] = $this->customerWith($this->product);
         $trial = $this->postJson(self::API."/prospects/{$prospect->id}/trials", [
-            'product_id' => $this->product->id, 'url' => 'https://trial.example.test/abc', 'starts_at' => '2026-11-17 00:00:00', 'ends_at' => '2026-11-20 00:00:00',
+            'product_id' => $this->product->id, 'starts_at' => '2026-11-17 00:00:00', 'ends_at' => '2026-11-20 00:00:00',
         ])->assertCreated();
 
         $this->getJson(self::PORTAL.'/trials', $headers)->assertJsonPath('data.0.state', 'scheduled')->assertJsonPath('data.0.url', null);
@@ -218,7 +218,7 @@ class CustomerLifecycleTest extends TestCase
     public function test_expired_trial_hides_its_link_and_trials_do_not_overlap_per_product(): void
     {
         [$prospect, , $headers] = $this->customerWith($this->product);
-        $body = ['product_id' => $this->product->id, 'url' => 'https://trial.example.test/abc', 'starts_at' => '2026-11-16 00:00:00', 'ends_at' => '2026-11-20 00:00:00'];
+        $body = ['product_id' => $this->product->id, 'starts_at' => '2026-11-16 00:00:00', 'ends_at' => '2026-11-20 00:00:00'];
         $this->postJson(self::API."/prospects/{$prospect->id}/trials", $body)->assertCreated();
         $this->postJson(self::API."/prospects/{$prospect->id}/trials", $body)->assertStatus(409)->assertJsonPath('error_code', 'TRIAL_OVERLAP');
 
@@ -231,7 +231,7 @@ class CustomerLifecycleTest extends TestCase
     {
         [$mine, , $headers] = $this->customerWith($this->product, 'mine@example.test');
         [$theirs] = $this->customerWith($this->product, 'theirs@example.test');
-        $this->postJson(self::API."/prospects/{$theirs->id}/trials", ['product_id' => $this->product->id, 'url' => 'https://trial.example.test/theirs', 'starts_at' => '2026-11-16 00:00:00', 'ends_at' => '2026-11-30 00:00:00'])->assertCreated();
+        $this->postJson(self::API."/prospects/{$theirs->id}/trials", ['product_id' => $this->product->id, 'starts_at' => '2026-11-16 00:00:00', 'ends_at' => '2026-11-30 00:00:00'])->assertCreated();
         $this->postJson(self::API.'/appointments', ['prospect_id' => $theirs->id, 'appointment_type_id' => $this->type('training')->id, 'starts_at' => '2026-11-18 09:00:00', 'ends_at' => '2026-11-18 11:00:00'])->assertCreated();
         $this->postJson(self::API.'/config/product-resources', ['product_id' => $this->product->id, 'title' => 'Guide', 'url' => 'https://drive.example.test/guide'])->assertCreated();
         $this->postJson(self::API.'/config/product-resources', ['product_id' => $this->product->id, 'title' => 'Staff only', 'url' => 'https://drive.example.test/staff', 'customer_visible' => false])->assertCreated();

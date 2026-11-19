@@ -40,7 +40,7 @@ class ProspectRepository
     }
 
     if (isset($filters['product_id'])) {
-      $query->whereHas('products', fn(Builder $q) => $q->where('products.id', $filters['product_id']));
+      $query->forProduct((int) $filters['product_id'], $filters['product_relation'] ?? 'linked');
     }
 
     if (isset($filters['loss_reason_id'])) {

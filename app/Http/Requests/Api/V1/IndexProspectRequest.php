@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Enums\ProductRelation;
 use App\Enums\StageType;
 use Illuminate\Validation\Rule;
 
@@ -16,6 +17,7 @@ class IndexProspectRequest extends ApiFormRequest
             'sales_stage_id' => ['sometimes', 'integer'],
             'stage_type' => ['sometimes', Rule::enum(StageType::class)],
             'product_id' => ['sometimes', 'integer'],
+            'product_relation' => ['sometimes', Rule::enum(ProductRelation::class)],
             'loss_reason_id' => ['sometimes', 'integer'],
             'city' => ['sometimes', 'string', 'max:100'],
             'source' => ['sometimes', 'string', 'max:50'],

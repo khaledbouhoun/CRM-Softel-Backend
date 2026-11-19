@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ProductRelation;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ConvertCustomerRequest;
 use App\Http\Requests\Api\V1\PaginationRequest;
@@ -25,6 +26,10 @@ class CustomerController extends Controller
         $search = trim((string) $request->query('search', ''));
         $paginator = Prospect::query()->with(Prospect::defaultRelations())->withCount('portalAccounts')
             ->whereNotNull('converted_at')
+            ->when($request->filled('product_id'), fn ($q) => $q->forProduct(
+                (int) $request->query('product_id'),
+                in_array($request->query('product_relation'), ProductRelation::values(), true) ? $request->query('product_relation') : 'owned',
+            ))
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w->where('name', 'like', "%{$search}%")->orWhere('contact_person', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%")))
             ->orderByDesc('converted_at')
             ->paginate(min((int) $request->query('per_page', config('crm.pagination.default_per_page')), config('crm.pagination.max_per_page')));

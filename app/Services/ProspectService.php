@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 class ProspectService
 {
     private const PROFILE_FIELDS = [
-        'name', 'contact_person', 'phone', 'email', 'address', 'city',
+        'name', 'contact_person', 'phone', 'email', 'language', 'address', 'city',
         'business_activity', 'business_activity_details',
         'profession', 'profession_details',
         'source', 'source_details', 'source_other',

@@ -16,6 +16,7 @@ class ProspectResource extends ApiResource
             'contact_person' => $this->contact_person,
             'phone' => $this->phone,
             'email' => $this->email,
+            'language' => $this->language,
             'address' => $this->address,
             'city' => $this->city,
             'business_activity' => $this->business_activity,
