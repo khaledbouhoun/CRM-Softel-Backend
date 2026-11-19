@@ -85,7 +85,7 @@ class SchedulingService
     {
         $this->releaseExpired();
 
-        $capacity = max(1, (int) $this->setting('demo_capacity'));
+        $capacity = 1;
         $minutes = max(5, (int) $this->setting('slot_minutes'));
         $earliest = now()->addHours((int) $this->setting('min_notice_hours'));
         $latest = now()->addDays((int) $this->setting('booking_horizon_days'))->endOfDay();

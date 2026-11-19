@@ -34,7 +34,7 @@ class AppointmentService
 
         $this->scheduling->assertOffered($start);
         $end = $start->copy()->addMinutes((int) $this->scheduling->setting('slot_minutes'));
-        $capacity = max(1, (int) $this->scheduling->setting('demo_capacity'));
+        $capacity = 1;
 
         return DB::transaction(function () use ($account, $prospect, $product, $type, $start, $end, $capacity, $note) {
             $this->scheduling->lockCalendar();
@@ -73,7 +73,7 @@ class AppointmentService
         $this->assertStatus($appointment, [Appointment::PROPOSED], 'Only a proposed time can be accepted.');
         $this->assertNotExpired($appointment);
 
-        $appointment->update(['status' => Appointment::CONFIRMED, 'hold_expires_at' => null, 'decided_at' => now(), 'decided_by' => 'customer']);
+        $appointment->update(['status' => Appointment::CONFIRMED, 'hold_expires_at' => null, 'send_whatsapp' => true, 'decided_at' => now(), 'decided_by' => 'customer']);
         $this->syncRequest($appointment, 'scheduled');
 
         return $appointment;
@@ -89,7 +89,7 @@ class AppointmentService
             $this->assertNotExpired($locked);
 
             $locked->update([
-                'status' => Appointment::CONFIRMED, 'hold_expires_at' => null, 'meeting_url' => $meetingUrl,
+                'status' => Appointment::CONFIRMED, 'hold_expires_at' => null, 'send_whatsapp' => true, 'meeting_url' => $meetingUrl,
                 'assigned_employee' => $employee ?? $locked->assigned_employee, 'customer_message' => $message,
                 'decided_at' => now(), 'decided_by' => $by,
             ]);
@@ -118,7 +118,7 @@ class AppointmentService
     {
         $this->scheduling->assertOffered($start);
         $end = $start->copy()->addMinutes((int) $this->scheduling->setting('slot_minutes'));
-        $capacity = max(1, (int) $this->scheduling->setting('demo_capacity'));
+        $capacity = 1;
 
         return DB::transaction(function () use ($appointment, $start, $end, $capacity, $message, $by) {
             $this->scheduling->lockCalendar();

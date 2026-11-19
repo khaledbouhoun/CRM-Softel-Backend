@@ -79,7 +79,7 @@ class AppointmentController extends Controller
         $end = isset($v['ends_at']) ? $this->date($v['ends_at']) : $start->copy()->addMinutes($type->default_duration_minutes);
         $extra = [
             'internal_notes' => $v['internal_notes'] ?? null, 'meeting_url' => $v['meeting_url'] ?? null,
-            'send_whatsapp' => (bool) ($v['send_whatsapp'] ?? false), 'resource_url' => $v['resource_url'] ?? null,
+            'send_whatsapp' => (bool) ($v['send_whatsapp'] ?? true), 'resource_url' => $v['resource_url'] ?? null,
             'decided_by' => $this->actor($request), 'decided_at' => now(),
         ];
 

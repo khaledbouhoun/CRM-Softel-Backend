@@ -25,7 +25,7 @@ class AppointmentResource extends ApiResource
             'ends_at' => $this->iso($this->ends_at),
             'hold_expires_at' => $this->iso($this->hold_expires_at),
             'type' => ['id' => $this->type->id, 'code' => $this->type->code, 'name' => $this->type->name, 'group' => $this->type->group, 'color' => $this->type->color],
-            'prospect' => ['id' => $this->prospect->id, 'name' => $this->prospect->name, 'contact_person' => $this->prospect->contact_person, 'phone' => $this->prospect->phone, 'is_customer' => $this->prospect->isCustomer()],
+            'prospect' => ['id' => $this->prospect->id, 'name' => $this->prospect->name, 'contact_person' => $this->prospect->contact_person, 'phone' => $this->prospect->phone, 'language' => $this->prospect->language, 'is_customer' => $this->prospect->isCustomer()],
             'product' => $this->product ? ['id' => $this->product->id, 'name' => $this->product->name] : null,
             'portal_account_id' => $this->portal_account_id,
             'assigned_employee' => $this->assigned_employee,

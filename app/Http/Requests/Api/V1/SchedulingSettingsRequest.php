@@ -15,7 +15,6 @@ class SchedulingSettingsRequest extends ApiFormRequest
             'hold_expiry_minutes' => ['sometimes', 'integer', 'between:5,43200'],
             'booking_horizon_days' => ['sometimes', 'integer', 'between:1,365'],
             'min_notice_hours' => ['sometimes', 'integer', 'between:0,720'],
-            'demo_capacity' => ['sometimes', 'integer', 'between:1,50'],
             'accompaniment_occurrences' => ['sometimes', 'integer', 'between:1,52'],
             'accompaniment_interval_days' => ['sometimes', 'integer', 'between:1,365'],
             'trial_default_days' => ['sometimes', 'integer', 'between:1,365'],

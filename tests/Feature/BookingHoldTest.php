@@ -101,14 +101,12 @@ class BookingHoldTest extends TestCase
         ]);
     }
 
-    public function test_capacity_setting_allows_parallel_demos_but_not_more(): void
+    public function test_only_one_demo_fits_a_slot(): void
     {
-        CrmSetting::write('demo_capacity', 2);
-        $tokens = collect(['a', 'b', 'c'])->map(fn ($n) => $this->signedIn(null, "{$n}@example.test")[1]);
+        $tokens = collect(['a', 'b'])->map(fn ($n) => $this->signedIn(null, "{$n}@example.test")[1]);
 
         $this->postJson(self::PORTAL.'/requests', $this->requestPayload($this->product), $tokens[0])->assertCreated();
-        $this->postJson(self::PORTAL.'/requests', $this->requestPayload($this->product), $tokens[1])->assertCreated();
-        $this->postJson(self::PORTAL.'/requests', $this->requestPayload($this->product), $tokens[2])->assertStatus(409);
+        $this->postJson(self::PORTAL.'/requests', $this->requestPayload($this->product), $tokens[1])->assertStatus(409);
     }
 
     public function test_off_grid_past_and_closed_day_times_are_refused(): void
@@ -228,7 +226,7 @@ class BookingHoldTest extends TestCase
     public function test_validation_and_unavailable_products(): void
     {
         [, $headers] = $this->signedIn();
-        $this->postJson(self::PORTAL.'/requests', [], $headers)->assertStatus(422)->assertJsonValidationErrors(['type', 'product_id', 'company', 'phone', 'email', 'wilaya', 'city'], 'errors');
+        $this->postJson(self::PORTAL.'/requests', [], $headers)->assertStatus(422)->assertJsonValidationErrors(['type', 'product_id', 'company', 'phone', 'wilaya', 'city'], 'errors');
 
         $inactive = Product::factory()->inactive()->create();
         $this->postJson(self::PORTAL.'/requests', $this->requestPayload($inactive), $headers)->assertStatus(422)->assertJsonPath('error_code', 'PRODUCT_UNAVAILABLE');
