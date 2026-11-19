@@ -6,15 +6,20 @@ use App\Exceptions\BusinessRuleException;
 use App\Models\Product;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ProductService
 {
-    private const FIELDS = ['name', 'description', 'is_active'];
+    private const FIELDS = [
+        'name', 'description', 'is_active', 'pack_id', 'slug', 'image_path', 'gallery',
+        'full_description', 'features', 'specifications', 'is_active_on_web', 'demo_url',
+    ];
 
     public function create(array $data): Product
     {
         $product = new Product(Arr::only($data, self::FIELDS));
         $product->is_active ??= true;
+        $product->slug = $product->slug ?: Str::slug($product->name);
         $product->save();
 
         return $product->refresh();

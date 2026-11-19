@@ -15,13 +15,25 @@ class ProductController extends Controller
 {
     public function __construct(private readonly ProductService $products) {}
 
-    /** Full list ordered by name. Filters: is_active, search. */
+    /** Full list ordered by name. Filters: is_active, search, pack_id, has_demo, prospect_id (+ relation: linked|interested|owned). */
     public function index(ConfigListRequest $request): JsonResponse
     {
-        $query = Product::query()->withCount('prospects')->orderBy('name')->orderBy('id');
+        $query = Product::query()->withCount('prospects')->with('pack')->orderBy('name')->orderBy('id');
 
         if ($request->has('is_active')) {
             $query->where('is_active', $request->boolean('is_active'));
+        }
+
+        if ($request->filled('prospect_id')) {
+            $query->forProspect((int) $request->validated('prospect_id'), $request->validated('relation') ?? 'linked');
+        }
+
+        if ($request->filled('pack_id')) {
+            $query->where('pack_id', (int) $request->validated('pack_id'));
+        }
+
+        if ($request->has('has_demo') && $request->boolean('has_demo')) {
+            $query->withDemo();
         }
 
         if (filled($search = $request->validated('search'))) {

@@ -16,6 +16,8 @@ class ProductFactory extends Factory
             'name' => 'Product '.$this->faker->unique()->numerify('####'),
             'description' => $this->faker->sentence(),
             'is_active' => true,
+            'is_active_on_web' => false,
+            'demo_url' => null,
         ];
     }
 
