@@ -13,6 +13,11 @@ class DatabaseSeeder extends Seeder
             LossReasonSeeder::class,
             ProductSeeder::class,
             ProspectFormOptionSeeder::class,
+            PortalDefaultsSeeder::class,
         ]);
+
+        if (! app()->runningUnitTests()) {
+            $this->call(CrmDemoDataSeeder::class);
+        }
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\AppointmentKind;
+use App\Exceptions\BusinessRuleException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\ConfigEntityResource;
 use App\Http\Responses\ApiResponse;
@@ -65,6 +67,32 @@ class ConfigEntityController extends Controller
         };
     }
 
+    /** Appointment types are the fixed list in AppointmentKind: they cannot be created or deactivated. */
+    private function guardFixedTypes(string $entity): void
+    {
+        if ($entity === 'appointment-types') {
+            throw new BusinessRuleException(
+                'Appointment types are fixed ('.implode(', ', AppointmentKind::values()).') and cannot be created or removed.',
+                'APPOINTMENT_TYPES_FIXED', [], 422,
+            );
+        }
+    }
+
+    /** Only presentation settings (duration, color, bookable, order) may change; identity and activation may not. */
+    private function guardFixedTypeUpdate(Request $request, Model $row): void
+    {
+        $errors = [];
+        foreach (['code', 'name', 'group', 'is_active'] as $field) {
+            if ($request->has($field) && (string) $request->input($field) !== (string) $row->{$field} && $request->input($field) !== (bool) $row->{$field}) {
+                $errors[$field] = ["The {$field} of a fixed appointment type cannot be changed."];
+            }
+        }
+
+        if ($errors !== []) {
+            throw new BusinessRuleException('Appointment types are fixed.', 'APPOINTMENT_TYPES_FIXED', $errors, 422);
+        }
+    }
+
     public function index(string $entity): JsonResponse
     {
         $def = $this->definition($entity);
@@ -78,6 +106,7 @@ class ConfigEntityController extends Controller
 
     public function store(Request $request, string $entity): JsonResponse
     {
+        $this->guardFixedTypes($entity);
         $def = $this->definition($entity);
         $data = $request->validate($def['rules']);
 
@@ -97,6 +126,9 @@ class ConfigEntityController extends Controller
     {
         $def = $this->definition($entity);
         $row = $def['model']::query()->findOrFail($id);
+        if ($entity === 'appointment-types') {
+            $this->guardFixedTypeUpdate($request, $row);
+        }
         $rules = collect($def['rules'])->map(function (array $rule, string $field) use ($row) {
             $rule = array_values(array_filter($rule, fn ($r) => $r !== 'required'));
             $rule = array_map(fn ($r) => is_string($r) && str_starts_with($r, 'unique:') ? Rule::unique($row->getTable(), $r === 'unique:holidays,date' ? 'date' : explode(',', $r)[1])->ignore($row->id) : $r, $rule);
@@ -112,6 +144,7 @@ class ConfigEntityController extends Controller
     /** Deactivates: referenced configuration is preserved. */
     public function destroy(string $entity, int $id): JsonResponse
     {
+        $this->guardFixedTypes($entity);
         $row = $this->definition($entity)['model']::query()->findOrFail($id);
         $row->update(['is_active' => false]);
 

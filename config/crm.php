@@ -64,7 +64,6 @@ return [
         'hold_expiry_minutes' => 1440,
         'booking_horizon_days' => 30,
         'min_notice_hours' => 12,
-        'demo_capacity' => 1,
         'accompaniment_occurrences' => 4,
         'accompaniment_interval_days' => 7,
         'trial_default_days' => 14,
@@ -86,6 +85,22 @@ return [
         'login_attempts_per_minute' => (int) env('CRM_PORTAL_LOGIN_ATTEMPTS', 5),
         'upload_max_kb' => 5120,
         'upload_mimes' => ['jpg', 'jpeg', 'png', 'pdf', 'txt', 'zip'],
+    ],
+
+    /*
+    | Files uploaded by employees and installers of product releases. They are
+    | stored through Laravel's Storage facade on a private disk (default disk
+    | unless CRM_UPLOAD_DISK is set, e.g. "s3"), so moving to cloud storage is a
+    | configuration change. PHP's own upload_max_filesize / post_max_size (php.ini)
+    | must be at least as large as the limits below.
+    */
+    'uploads' => [
+        'disk' => env('CRM_UPLOAD_DISK'),
+        'staff_attachment_max_kb' => (int) env('CRM_STAFF_UPLOAD_MAX_KB', 102400),
+        'staff_attachment_extensions' => ['pdf', 'docx', 'txt', 'exe', 'zip', 'rar', 'jpg', 'jpeg', 'png'],
+        'max_files_per_reply' => 5,
+        'installer_max_kb' => (int) env('CRM_INSTALLER_MAX_KB', 1048576),
+        'installer_extensions' => ['exe', 'zip', 'rar'],
     ],
 
     'dashboard' => [

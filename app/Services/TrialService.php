@@ -13,8 +13,16 @@ class TrialService
 {
     public function __construct(private readonly SchedulingService $scheduling) {}
 
-    public function activate(Prospect $prospect, Product $product, string $url, ?Carbon $start, ?Carbon $end, ?string $by, ?string $notes = null): Trial
+    public function activate(Prospect $prospect, Product $product, ?Carbon $start, ?Carbon $end, ?string $by, ?string $notes = null): Trial
     {
+        if (blank($product->demo_url)) {
+            throw new BusinessRuleException('This product has no demo link configured.', 'DEMO_URL_MISSING', ['product_id' => ['This product has no demo link configured.']], 422);
+        }
+
+        if (! $prospect->products()->where('products.id', $product->id)->exists()) {
+            throw new BusinessRuleException('The prospect is not interested in this product.', 'PRODUCT_NOT_OF_INTEREST', ['product_id' => ['The prospect is not interested in this product.']], 422);
+        }
+
         $start ??= now();
         $end ??= $start->copy()->addDays((int) $this->scheduling->setting('trial_default_days'));
 
@@ -31,7 +39,7 @@ class TrialService
         }
 
         $trial = Trial::query()->create([
-            'prospect_id' => $prospect->id, 'product_id' => $product->id, 'url' => $url,
+            'prospect_id' => $prospect->id, 'product_id' => $product->id, 'url' => $product->demo_url,
             'starts_at' => $start, 'ends_at' => $end, 'created_by' => $by, 'internal_notes' => $notes,
         ]);
 

@@ -54,6 +54,8 @@ class PortalRequestService
                 'source' => $data['source'] ?? 'website',
             ]);
 
+            app(PortalProfileService::class)->remember($account, $data);
+
             if (! empty($data['slot_start'])) {
                 $appointment = $this->appointments->hold($account, $prospect, $product, Carbon::parse($data['slot_start'], config('app.timezone')), $data['notes'] ?? null);
                 $request->update(['appointment_id' => $appointment->id]);
@@ -97,7 +99,7 @@ class PortalRequestService
             'name' => $data['company'], 'contact_person' => $data['contact_name'], 'phone' => $data['phone'],
             'email' => $data['email'], 'address' => $data['wilaya'], 'city' => $data['city'],
             'business_activity' => $data['business_activity'] ?? null, 'profession' => $data['job_title'] ?? null,
-            'source' => 'website', 'notes' => $notes, 'product_ids' => [$product->id],
+            'source' => 'website', 'notes' => $notes, 'product_ids' => [$product->id], 'language' => in_array($account->locale, ['ar', 'fr', 'en'], true) ? $account->locale : 'fr',
         ]);
 
         $account->update(['prospect_id' => $prospect->id]);

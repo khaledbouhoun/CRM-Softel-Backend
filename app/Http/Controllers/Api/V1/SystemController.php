@@ -14,12 +14,14 @@ use App\Http\Resources\Api\V1\ProductResource;
 use App\Http\Resources\Api\V1\ProspectFormOptionResource;
 use App\Http\Resources\Api\V1\SalesStageResource;
 use App\Http\Responses\ApiResponse;
+use App\Enums\AppointmentKind;
 use App\Models\AppointmentType;
 use App\Models\EmployeeSession;
 use App\Models\InterventionPriority;
 use App\Models\InterventionStatus;
 use App\Models\InterventionType;
 use App\Models\LossReason;
+use App\Models\Pack;
 use App\Models\Product;
 use App\Models\ProspectFormOption;
 use App\Models\SalesStage;
@@ -79,7 +81,10 @@ class SystemController extends Controller
             'follow_up_scopes' => IndexFollowUpRequest::SCOPES,
             'sales_stages' => $resolve(SalesStage::query()->ordered()->get(), SalesStageResource::class),
             'loss_reasons' => $resolve(LossReason::query()->ordered()->get(), LossReasonResource::class),
-            'products' => $resolve(Product::query()->orderBy('name')->orderBy('id')->get(), ProductResource::class),
+            'products' => $resolve(Product::query()->with('pack')->orderBy('name')->orderBy('id')->get(), ProductResource::class),
+            'packs' => Pack::query()->orderBy('name')->get(['id', 'name', 'code'])->map->only(['id', 'name', 'code'])->all(),
+            'appointment_kinds' => AppointmentKind::values(),
+            'wilayas' => \App\Support\Wilayas::all(),
             'appointment_types' => AppointmentType::query()->orderBy('sort_order')->get()->map(fn ($m) => (new ConfigEntityResource($m))->resolve())->all(),
             'intervention_types' => InterventionType::query()->orderBy('sort_order')->get()->map(fn ($m) => (new ConfigEntityResource($m))->resolve())->all(),
             'intervention_statuses' => InterventionStatus::query()->orderBy('sort_order')->get()->map(fn ($m) => (new ConfigEntityResource($m))->resolve())->all(),

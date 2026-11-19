@@ -12,6 +12,7 @@ use App\Models\Trial;
 use App\Services\TrialService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class TrialController extends Controller
 {
@@ -30,14 +31,21 @@ class TrialController extends Controller
     {
         $v = $request->validated();
         $tz = config('app.timezone');
-        $trial = $this->trials->activate(
-            $prospect, Product::query()->findOrFail($v['product_id']), $v['url'],
-            isset($v['starts_at']) ? Carbon::parse($v['starts_at'], $tz) : null,
-            isset($v['ends_at']) ? Carbon::parse($v['ends_at'], $tz) : null,
+        $start = isset($v['starts_at']) ? Carbon::parse($v['starts_at'], $tz) : null;
+        $end = isset($v['ends_at']) ? Carbon::parse($v['ends_at'], $tz) : null;
+        $activate = fn (int $productId) => $this->trials->activate(
+            $prospect, Product::query()->findOrFail($productId), $start?->copy(), $end?->copy(),
             $this->actor($request), $v['internal_notes'] ?? null,
-        );
+        )->load('product');
 
-        return ApiResponse::created(new TrialResource($trial->load('product')), 'Trial activated.');
+        if (! isset($v['product_ids'])) {
+            return ApiResponse::created(new TrialResource($activate($v['product_id'])), 'Trial activated.');
+        }
+
+        // Several products: one trial each, all-or-nothing.
+        $trials = DB::transaction(fn () => collect($v['product_ids'])->map($activate)->all());
+
+        return ApiResponse::created(array_map(fn ($t) => (new TrialResource($t))->resolve(), $trials), 'Trials activated.');
     }
 
     public function revoke(Trial $trial): JsonResponse

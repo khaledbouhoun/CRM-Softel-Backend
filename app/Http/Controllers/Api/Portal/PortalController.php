@@ -11,6 +11,11 @@ use App\Models\Intervention;
 use App\Models\PortalAccount;
 use App\Models\PortalRequest;
 use App\Models\Product;
+use App\Models\Prospect;
+use App\Rules\ValidWilaya;
+use App\Services\PortalProfileService;
+use App\Support\Wilayas;
+use Illuminate\Support\Facades\DB;
 use App\Models\ProductResource;
 use App\Models\Trial;
 use App\Services\AppointmentService;
@@ -27,6 +32,7 @@ class PortalController extends Controller
         private readonly PortalRequestService $requests,
         private readonly AppointmentService $appointments,
         private readonly SchedulingService $scheduling,
+        private readonly PortalProfileService $profile,
     ) {}
 
     private function account(Request $request): PortalAccount
@@ -44,7 +50,7 @@ class PortalController extends Controller
 
     public function products(): JsonResponse
     {
-        $items = Product::query()->active()->orderBy('name')->get()->map(fn ($p) => PortalPresenter::product($p))->all();
+        $items = Product::query()->onWeb()->with('pack')->orderBy('name')->get()->map(fn ($p) => PortalPresenter::product($p))->all();
 
         return ApiResponse::success($items, 'Products retrieved successfully.', 200, ['total' => count($items)]);
     }
@@ -71,17 +77,85 @@ class PortalController extends Controller
     {
         $account = $this->account($request)->load('prospect');
 
-        return ApiResponse::success(PortalPresenter::account($account), 'Profile retrieved successfully.');
+        return ApiResponse::success(PortalPresenter::account($account) + ['onboarding' => $this->profile->onboarding($account), 'request_defaults' => $this->profile->requestDefaults($account)], 'Profile retrieved successfully.');
+    }
+
+    /** Profile page: personal details, request history and where things stand. */
+    public function profile(Request $request): JsonResponse
+    {
+        $account = $this->account($request)->load('prospect');
+        $this->scheduling->releaseExpired();
+        $requests = PortalRequest::query()->with(['product', 'appointment.type', 'appointment.product'])
+            ->where('portal_account_id', $account->id)->latest('id')->get();
+
+        return ApiResponse::success([
+            'account' => PortalPresenter::account($account),
+            'onboarding' => $this->profile->onboarding($account),
+            'request_defaults' => $this->profile->requestDefaults($account),
+            'status' => [
+                'account_type' => $account->prospect?->isCustomer() ? 'customer' : ($account->prospect_id ? 'prospect' : 'visitor'),
+                'open_requests' => $requests->whereIn('status', ['pending', 'scheduled'])->count(),
+                'latest_request' => $requests->first() ? ['id' => $requests->first()->id, 'type' => $requests->first()->type, 'status' => $requests->first()->status] : null,
+                'owned_products' => count($this->ownedProductIds($account)),
+            ],
+            'requests' => $requests->map(fn ($r) => PortalPresenter::request($r))->all(),
+        ], 'Profile retrieved successfully.', 200, ['requests_total' => $requests->count()]);
+    }
+
+    /** The 58 wilayas for the request form and the profile address. */
+    public function wilayas(): JsonResponse
+    {
+        return ApiResponse::success(Wilayas::all(), 'Wilayas retrieved successfully.', 200, ['total' => count(Wilayas::all())]);
+    }
+
+    /**
+     * Product checklist: products of one pack are alternatives (radio group, picking one clears the others),
+     * every other product is an independent checkbox. The server enforces the same rule on submit.
+     */
+    public function checklist(): JsonResponse
+    {
+        $products = Product::query()->onWeb()->with('pack')->orderBy('name')->get();
+        $groups = [];
+
+        foreach ($products->whereNotNull('pack_id')->groupBy('pack_id') as $packId => $members) {
+            $ids = $members->pluck('id')->all();
+            $pack = $members->first()->pack;
+            $groups[] = [
+                'type' => 'pack', 'selection' => 'single', 'pack' => ['id' => $pack->id, 'code' => $pack->code, 'name' => $pack->name],
+                'products' => $members->map(fn ($p) => PortalPresenter::product($p) + ['exclusive_with' => array_values(array_diff($ids, [$p->id]))])->values()->all(),
+            ];
+        }
+
+        $groups[] = [
+            'type' => 'independent', 'selection' => 'multiple', 'pack' => null,
+            'products' => $products->whereNull('pack_id')->map(fn ($p) => PortalPresenter::product($p) + ['exclusive_with' => []])->values()->all(),
+        ];
+
+        return ApiResponse::success($groups, 'Checklist retrieved successfully.', 200, ['total' => $products->count()]);
     }
 
     public function updateMe(Request $request): JsonResponse
     {
         $account = $this->account($request);
+        if (is_string($request->input('wilaya'))) {
+            $request->merge(['wilaya' => Wilayas::canonical($request->input('wilaya'))]);
+        }
+
         $account->update($request->validate([
             'name' => ['sometimes', 'string', 'max:150'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:30', 'regex:/^\+?[0-9][0-9 .\-()\/]{4,28}$/'],
             'locale' => ['sometimes', 'in:ar,en,fr'],
+            'company' => ['sometimes', 'nullable', 'string', 'max:150'],
+            'contact_name' => ['sometimes', 'nullable', 'string', 'max:150'],
+            'job_title' => ['sometimes', 'nullable', 'string', 'max:150'],
+            'wilaya' => ['sometimes', 'nullable', 'string', 'max:100', new ValidWilaya],
+            'city' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'business_activity' => ['sometimes', 'nullable', 'string', 'max:150'],
         ]));
+
+        if ($account->wasChanged('locale') && $account->prospect_id) {
+            Prospect::query()->whereKey($account->prospect_id)->update(['language' => $account->locale]);
+        }
 
         return ApiResponse::success(PortalPresenter::account($account->load('prospect')), 'Profile updated.');
     }
@@ -107,9 +181,21 @@ class PortalController extends Controller
 
     public function submit(PortalSubmitRequest $request): JsonResponse
     {
-        $created = $this->requests->submit($this->account($request), $request->validated());
+        $data = $request->validated();
+        $account = $this->account($request);
 
-        return ApiResponse::created(PortalPresenter::request($created), 'Request received.');
+        if (! isset($data['product_ids'])) {
+            return ApiResponse::created(PortalPresenter::request($this->requests->submit($account, $data)), 'Request received.');
+        }
+
+        // Several products: one request per product, all-or-nothing.
+        $ids = $data['product_ids'];
+        unset($data['product_ids']);
+        $created = DB::transaction(fn () => collect($ids)
+            ->map(fn ($id) => PortalPresenter::request($this->requests->submit($account, $data + ['product_id' => $id])))
+            ->all());
+
+        return ApiResponse::created($created, 'Requests received.');
     }
 
     public function requestsIndex(Request $request): JsonResponse

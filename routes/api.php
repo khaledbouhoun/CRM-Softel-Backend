@@ -9,8 +9,11 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\FollowUpController;
 use App\Http\Controllers\Api\V1\InterventionStaffController;
 use App\Http\Controllers\Api\V1\LossReasonController;
+use App\Http\Controllers\Api\V1\MessageTemplateAuditController;
 use App\Http\Controllers\Api\V1\PortalRequestStaffController;
+use App\Http\Controllers\Api\V1\PackController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\ProductReleaseController;
 use App\Http\Controllers\Api\V1\ProspectActivityController;
 use App\Http\Controllers\Api\V1\ProspectController;
 use App\Http\Controllers\Api\V1\ProspectFollowUpController;
@@ -18,6 +21,7 @@ use App\Http\Controllers\Api\V1\ProspectFormOptionController;
 use App\Http\Controllers\Api\V1\ProspectStageController;
 use App\Http\Controllers\Api\V1\SalesStageController;
 use App\Http\Controllers\Api\V1\SchedulingSettingsController;
+use App\Http\Controllers\Api\V1\SettingsHelpController;
 use App\Http\Controllers\Api\V1\SystemController;
 use App\Http\Controllers\Api\V1\TrialController;
 use App\Http\Middleware\RestrictToAllowedNetworks;
@@ -66,6 +70,7 @@ Route::prefix('v1')
 
         // Configuration
         Route::apiResource('products', ProductController::class);
+        Route::apiResource('packs', PackController::class);
 
         Route::post('sales-stages/reorder', [SalesStageController::class, 'reorder'])->name('sales-stages.reorder');
         Route::apiResource('sales-stages', SalesStageController::class)->parameters(['sales-stages' => 'salesStage']);
@@ -111,11 +116,27 @@ Route::prefix('v1')
         Route::get('interventions/{intervention}/transitions', [InterventionStaffController::class, 'allowedTransitions'])->name('interventions.transitions');
         Route::post('interventions/{intervention}/transition', [InterventionStaffController::class, 'transition'])->name('interventions.transition');
         Route::post('interventions/{intervention}/messages', [InterventionStaffController::class, 'message'])->name('interventions.messages');
+        Route::post('interventions/{intervention}/reopen', [InterventionStaffController::class, 'reopen'])->name('interventions.reopen');
+        Route::get('interventions/{intervention}/attachments/{attachmentId}', [InterventionStaffController::class, 'download'])->whereNumber('attachmentId')->name('interventions.attachments.download');
+        Route::get('interventions/{intervention}/attachments/{attachmentId}/preview', [InterventionStaffController::class, 'preview'])->whereNumber('attachmentId')->name('interventions.attachments.preview');
         Route::post('interventions/{intervention}/publish', [InterventionStaffController::class, 'publish'])->name('interventions.publish');
         Route::post('interventions/{intervention}/unpublish', [InterventionStaffController::class, 'unpublish'])->name('interventions.unpublish');
 
+        // Product releases / updates
+        Route::get('product-releases', [ProductReleaseController::class, 'index'])->name('product-releases.index');
+        Route::post('product-releases', [ProductReleaseController::class, 'store'])->name('product-releases.store');
+        Route::get('product-releases/{release}', [ProductReleaseController::class, 'show'])->name('product-releases.show');
+        Route::match(['put', 'patch'], 'product-releases/{release}', [ProductReleaseController::class, 'update'])->name('product-releases.update');
+        Route::delete('product-releases/{release}', [ProductReleaseController::class, 'destroy'])->name('product-releases.destroy');
+        Route::post('product-releases/{release}/installer', [ProductReleaseController::class, 'uploadInstaller'])->name('product-releases.installer.store');
+        Route::delete('product-releases/{release}/installer', [ProductReleaseController::class, 'removeInstaller'])->name('product-releases.installer.destroy');
+        Route::get('product-releases/{release}/download', [ProductReleaseController::class, 'download'])->name('product-releases.download');
+
         // Scheduling and workflow configuration
         Route::get('settings/scheduling', [SchedulingSettingsController::class, 'show'])->name('settings.scheduling.show');
+        Route::get('settings/message-templates/audit', MessageTemplateAuditController::class)->name('settings.message-templates.audit');
+        Route::get('settings/help', [SettingsHelpController::class, 'index'])->name('settings.help.index');
+        Route::get('settings/help/{section}', [SettingsHelpController::class, 'show'])->name('settings.help.show');
         Route::put('settings/scheduling', [SchedulingSettingsController::class, 'update'])->name('settings.scheduling.update');
         Route::prefix('config/{entity}')->where(['entity' => 'appointment-types|holidays|intervention-types|intervention-statuses|intervention-transitions|intervention-priorities|message-templates|product-resources'])
             ->name('config.')->group(function () {

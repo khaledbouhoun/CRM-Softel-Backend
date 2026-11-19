@@ -7,8 +7,10 @@ use App\Models\Intervention;
 use App\Models\PortalAccount;
 use App\Models\PortalRequest;
 use App\Models\Product;
+use Illuminate\Support\Facades\Storage;
 use App\Models\ProductResource;
 use App\Models\Trial;
+use App\Support\Wilayas;
 use Illuminate\Support\Carbon;
 
 /**
@@ -26,8 +28,16 @@ final class PortalPresenter
     /** @return array<string, mixed> */
     public static function account(PortalAccount $a): array
     {
+        $wilaya = Wilayas::resolve($a->wilaya);
+
         return [
-            'id' => $a->id, 'name' => $a->name, 'email' => $a->email, 'phone' => $a->phone, 'locale' => $a->locale,
+            'id' => $a->id, 'name' => $a->name, 'email' => $a->email, 'phone' => $a->phone, 'locale' => $a->locale, 'avatar_url' => $a->avatar_url,
+            'profile' => [
+                'company' => $a->company, 'contact_name' => $a->contact_name, 'job_title' => $a->job_title,
+                'wilaya' => $wilaya['label'] ?? $a->wilaya, 'wilaya_code' => $wilaya['code'] ?? null,
+                'city' => $a->city, 'business_activity' => $a->business_activity,
+            ],
+            'email_verified' => $a->hasVerifiedEmail(),
             'is_customer' => $a->prospect_id !== null && $a->prospect?->isCustomer(),
         ];
     }
@@ -35,7 +45,14 @@ final class PortalPresenter
     /** @return array<string, mixed> */
     public static function product(Product $p): array
     {
-        return ['id' => $p->id, 'name' => $p->name, 'description' => $p->description];
+        return [
+            'id' => $p->id, 'name' => $p->name, 'slug' => $p->slug, 'description' => $p->description,
+            'full_description' => $p->full_description, 'image_url' => $p->image_path ? Storage::url($p->image_path) : null,
+            'gallery' => collect($p->gallery ?? [])->map(fn ($path) => Storage::url($path))->all(),
+            'features' => $p->features ?? [], 'specifications' => $p->specifications ?? [],
+            'pack' => $p->pack_id ? ['id' => $p->pack_id, 'code' => $p->pack?->code, 'name' => $p->pack?->name] : null,
+            'has_demo' => filled($p->demo_url),
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -98,6 +115,7 @@ final class PortalPresenter
             'id' => $i->id, 'reference' => $i->reference, 'source' => $i->source, 'title' => $i->title,
             'type' => ['code' => $i->type->code, 'name' => $i->type->name, 'color' => $i->type->color],
             'status' => ['label' => $i->status->customer_label, 'color' => $i->status->color, 'awaits_customer' => $i->status->awaits_customer, 'is_closed' => $i->status->is_closed],
+            'can_reply' => ! $i->status->is_closed,
             'product' => $i->product ? ['id' => $i->product->id, 'name' => $i->product->name] : null,
             'created_at' => self::iso($i->created_at), 'updated_at' => self::iso($i->updated_at),
             'resolution' => $i->customer_resolution,
@@ -106,13 +124,22 @@ final class PortalPresenter
 
         if ($detail) {
             $out['description'] = $i->description;
+            if ($i->status->is_closed) {
+                $out['closed_notice'] = 'This intervention is closed. New replies are disabled.';
+            }
+
+            $file = fn ($a) => ChatPresenter::attachment($a, [
+                'download' => 'portal.interventions.download', 'preview' => 'portal.interventions.preview',
+            ], ['id' => $i->id], false);
+
             $out['messages'] = $i->messages->where('visibility', 'customer')->map(fn ($m) => [
-                'id' => $m->id, 'author' => $m->author_type === 'customer' ? 'you' : 'support', 'body' => $m->body,
+                'id' => $m->id, 'kind' => $m->kind, 'author' => $m->isEvent() ? 'system' : ($m->author_type === 'customer' ? 'you' : 'support'),
+                'sender' => ChatPresenter::sender($m, true), 'event' => ChatPresenter::event($m, true), 'body' => $m->body,
                 'status_label' => $m->status?->customer_label, 'created_at' => self::iso($m->created_at),
+                'attachments' => $m->relationLoaded('attachments')
+                    ? $m->attachments->where('visibility', 'customer')->map($file)->values()->all() : [],
             ])->values()->all();
-            $out['attachments'] = $i->attachments->where('visibility', 'customer')->map(fn ($a) => [
-                'id' => $a->id, 'name' => $a->original_name, 'size' => $a->size,
-            ])->values()->all();
+            $out['attachments'] = $i->attachments->where('visibility', 'customer')->map($file)->values()->all();
         }
 
         return $out;

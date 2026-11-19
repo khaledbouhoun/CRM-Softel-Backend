@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Portal\PortalAuthController;
 use App\Http\Controllers\Api\Portal\PortalController;
 use App\Http\Controllers\Api\Portal\PortalInterventionController;
+use App\Http\Controllers\Api\Portal\PortalReleaseController;
 use App\Http\Middleware\AuthenticatePortalAccount;
 use App\Http\Middleware\PortalServiceKey;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +18,8 @@ Route::prefix('api/portal/v1')->name('portal.')
     ->middleware(['api', PortalServiceKey::class, 'throttle:portal-api'])
     ->group(function () {
         Route::get('catalog/products', [PortalController::class, 'products'])->name('catalog.products');
+        Route::get('catalog/checklist', [PortalController::class, 'checklist'])->name('catalog.checklist');
+        Route::get('catalog/wilayas', [PortalController::class, 'wilayas'])->name('catalog.wilayas');
         Route::get('availability', [PortalController::class, 'availability'])->name('availability');
 
         Route::middleware('throttle:portal-login')->group(function () {
@@ -24,12 +27,16 @@ Route::prefix('api/portal/v1')->name('portal.')
             Route::post('auth/login', [PortalAuthController::class, 'login'])->name('auth.login');
             Route::post('auth/forgot-password', [PortalAuthController::class, 'forgotPassword'])->name('auth.forgot');
             Route::post('auth/reset-password', [PortalAuthController::class, 'resetPassword'])->name('auth.reset');
+            Route::post('auth/google', [PortalAuthController::class, 'googleAuth'])->name('auth.google');
+            Route::post('auth/verify-email', [PortalAuthController::class, 'verifyEmail'])->name('auth.verify');
+            Route::post('auth/resend-verification', [PortalAuthController::class, 'resendVerification'])->name('auth.resend');
         });
 
         Route::middleware(AuthenticatePortalAccount::class)->group(function () {
             Route::post('auth/logout', [PortalAuthController::class, 'logout'])->name('auth.logout');
             Route::get('me', [PortalController::class, 'me'])->name('me');
             Route::patch('me', [PortalController::class, 'updateMe'])->name('me.update');
+            Route::get('profile', [PortalController::class, 'profile'])->name('profile');
             Route::get('overview', [PortalController::class, 'overview'])->name('overview');
 
             Route::get('requests', [PortalController::class, 'requestsIndex'])->name('requests.index');
@@ -45,6 +52,9 @@ Route::prefix('api/portal/v1')->name('portal.')
             Route::get('products', [PortalController::class, 'ownedProducts'])->name('products');
             Route::get('resources', [PortalController::class, 'resources'])->name('resources');
             Route::get('updates', [PortalController::class, 'updates'])->name('updates');
+            Route::get('releases', [PortalReleaseController::class, 'index'])->name('releases.index');
+            Route::get('releases/{id}', [PortalReleaseController::class, 'show'])->whereNumber('id')->name('releases.show');
+            Route::get('releases/{id}/download', [PortalReleaseController::class, 'download'])->whereNumber('id')->name('releases.download');
 
             Route::get('interventions/options', [PortalInterventionController::class, 'options'])->name('interventions.options');
             Route::get('interventions', [PortalInterventionController::class, 'index'])->name('interventions.index');
@@ -56,6 +66,7 @@ Route::prefix('api/portal/v1')->name('portal.')
                 Route::post('transition', [PortalInterventionController::class, 'transition'])->name('interventions.transition');
                 Route::post('attachments', [PortalInterventionController::class, 'attach'])->name('interventions.attach');
                 Route::get('attachments/{attachmentId}', [PortalInterventionController::class, 'download'])->whereNumber('attachmentId')->name('interventions.download');
+                Route::get('attachments/{attachmentId}/preview', [PortalInterventionController::class, 'preview'])->whereNumber('attachmentId')->name('interventions.preview');
             });
         });
     });

@@ -3,11 +3,15 @@
 namespace Database\Seeders;
 
 use App\Models\AppointmentType;
+use App\Models\Holiday;
 use App\Models\InterventionPriority;
 use App\Models\InterventionStatus;
 use App\Models\InterventionStatusTransition;
 use App\Models\InterventionType;
 use App\Models\MessageTemplate;
+use App\Models\Product;
+use App\Models\ProductResource;
+use App\Services\MessageTemplateDefaults;
 use Illuminate\Database\Seeder;
 
 /**
@@ -26,14 +30,14 @@ class PortalDefaultsSeeder extends Seeder
         ] as [$code, $name, $group, $minutes, $color, $bookable, $order]) {
             AppointmentType::updateOrCreate(['code' => $code], [
                 'name' => $name, 'group' => $group, 'default_duration_minutes' => $minutes,
-                'color' => $color, 'customer_bookable' => $bookable, 'sort_order' => $order,
+                'color' => $color, 'customer_bookable' => $bookable, 'sort_order' => $order, 'is_active' => true,
             ]);
         }
 
         foreach ([
             ['bug', 'Bug', 'customer', '#DC2626'], ['question', 'Question', 'customer', '#0EA5E9'],
             ['remark', 'Remark / suggestion', 'customer', '#8B5CF6'], ['fix', 'Fix', 'employee', '#16A34A'],
-            ['update', 'Product update', 'employee', '#009EE0'], ['release', 'New release / feature', 'employee', '#F59E0B'],
+
             ['service', 'Service intervention', 'both', '#64748B'],
         ] as $i => [$code, $name, $source, $color]) {
             InterventionType::updateOrCreate(['code' => $code], ['name' => $name, 'source' => $source, 'color' => $color, 'sort_order' => $i + 1]);
@@ -79,7 +83,8 @@ class PortalDefaultsSeeder extends Seeder
             'closed' => ['reopened'],
             'reopened' => ['under_review', 'in_progress'],
         ];
-        $customer = ['waiting_customer>under_review', 'delivered>reopened', 'closed>reopened'];
+        // Customers may answer a request for information or contest a delivery; only employees reopen closed tickets.
+        $customer = ['waiting_customer>under_review', 'delivered>reopened'];
         foreach ($employee as $from => $targets) {
             foreach ($targets as $to) {
                 InterventionStatusTransition::updateOrCreate(
@@ -89,15 +94,44 @@ class PortalDefaultsSeeder extends Seeder
             }
         }
 
+        MessageTemplateDefaults::install();
+
+        // Algerian public holidays
         foreach ([
-            ['training_first', 'fr', 'Bonjour {contact}, votre première formation {product} est prévue le {date} de {start} à {end}. Support : {resource_url}'],
-            ['training_first', 'en', 'Hello {contact}, your first {product} training is on {date} from {start} to {end}. Material: {resource_url}'],
-            ['training_first', 'ar', 'مرحبا {contact}، تدريبكم الأول على {product} بتاريخ {date} من {start} إلى {end}. المرجع: {resource_url}'],
-            ['training_review', 'fr', 'Bonjour {contact}, voici le support de révision {product} : {resource_url}'],
-            ['training_review', 'en', 'Hello {contact}, here is the {product} review material: {resource_url}'],
-            ['training_review', 'ar', 'مرحبا {contact}، هذا مرجع مراجعة {product}: {resource_url}'],
-        ] as [$code, $locale, $body]) {
-            MessageTemplate::updateOrCreate(['code' => $code, 'locale' => $locale], ['body' => $body]);
+            ['2026-01-01', "Jour de l'An"],
+            ['2026-01-12', 'Yennayer (Nouvel An Amazigh)'],
+            ['2026-05-01', 'Fête du Travail'],
+            ['2026-07-05', "Fête de l'Indépendance"],
+            ['2026-11-01', 'Fête de la Révolution'],
+        ] as [$date, $name]) {
+            Holiday::updateOrCreate(['date' => $date], ['name' => $name, 'is_active' => true]);
+        }
+
+        // Starter product documentation resources
+        $gestcom = Product::query()->where('name', 'like', '%GestCom%')->first();
+        if ($gestcom) {
+            ProductResource::updateOrCreate(
+                ['product_id' => $gestcom->id, 'title' => 'Guide de démarrage rapide GESTCOM (PDF)'],
+                [
+                    'kind' => 'pdf',
+                    'url' => 'https://softel.dz/resources/gestcom-demarrage.pdf',
+                    'customer_visible' => true,
+                    'is_training_material' => true,
+                    'sort_order' => 1,
+                    'is_active' => true,
+                ]
+            );
+            ProductResource::updateOrCreate(
+                ['product_id' => $gestcom->id, 'title' => 'Tutoriel vidéo : Facturation et Gestion des Stocks'],
+                [
+                    'kind' => 'video',
+                    'url' => 'https://softel.dz/videos/gestcom-tutoriel',
+                    'customer_visible' => true,
+                    'is_training_material' => true,
+                    'sort_order' => 2,
+                    'is_active' => true,
+                ]
+            );
         }
     }
 }
