@@ -7,21 +7,24 @@ use App\Http\Requests\Api\V1\IndexInterventionRequest;
 use App\Http\Requests\Api\V1\InterventionMessageRequest;
 use App\Http\Requests\Api\V1\InterventionTransitionRequest;
 use App\Http\Requests\Api\V1\PublishInterventionRequest;
+use App\Http\Requests\Api\V1\ReopenInterventionRequest;
 use App\Http\Requests\Api\V1\StoreInterventionRequest;
 use App\Http\Requests\Api\V1\UpdateInterventionRequest;
 use App\Http\Resources\Api\V1\InterventionResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Intervention;
 use App\Models\InterventionStatusTransition;
+use App\Services\AttachmentResponder;
 use App\Services\InterventionService;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** After-sales triage for employees (all employees have the same access). */
 class InterventionStaffController extends Controller
 {
     private const LIST_WITH = ['type', 'status', 'priority', 'prospect', 'product'];
 
-    private const DETAIL_WITH = [...self::LIST_WITH, 'customers', 'messages', 'attachments'];
+    private const DETAIL_WITH = [...self::LIST_WITH, 'customers', 'messages.attachments', 'messages.status', 'messages.fromStatus', 'messages.account', 'attachments'];
 
     public function __construct(private readonly InterventionService $interventions) {}
 
@@ -86,9 +89,32 @@ class InterventionStaffController extends Controller
 
     public function message(InterventionMessageRequest $request, Intervention $intervention): JsonResponse
     {
-        $this->interventions->addMessage($intervention, 'employee', $this->actor($request), $request->validated('visibility'), $request->validated('body'));
+        $this->interventions->addMessage(
+            $intervention, 'employee', $this->actor($request), $request->validated('visibility'),
+            (string) $request->validated('body', ''), $request->file('files', []),
+        );
 
         return ApiResponse::created($this->detail($intervention), 'Message added.');
+    }
+
+    /** Employees reopen a closed intervention: replies are enabled again for both sides. */
+    public function reopen(ReopenInterventionRequest $request, Intervention $intervention): JsonResponse
+    {
+        $this->interventions->reopen($intervention, $this->actor($request), $request->validated('status_id'), $request->validated('note'));
+
+        return ApiResponse::success($this->detail($intervention), 'Intervention reopened.');
+    }
+
+    /** Secure download (attachment disposition) of any file on the intervention, internal ones included. */
+    public function download(Intervention $intervention, int $attachmentId): StreamedResponse
+    {
+        return AttachmentResponder::download($intervention->attachments()->findOrFail($attachmentId), $this->interventions->disk());
+    }
+
+    /** Inline preview for images and PDFs only; anything else is downloaded. */
+    public function preview(Intervention $intervention, int $attachmentId): StreamedResponse
+    {
+        return AttachmentResponder::preview($intervention->attachments()->findOrFail($attachmentId), $this->interventions->disk());
     }
 
     public function publish(PublishInterventionRequest $request, Intervention $intervention): JsonResponse

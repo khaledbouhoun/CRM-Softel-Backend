@@ -67,7 +67,7 @@ class InterventionWorkflowTest extends TestCase
 
         $this->postJson(self::PORTAL.'/interventions', ['intervention_type_id' => $this->type('bug'), 'product_id' => $other->id, 'title' => 'x', 'description' => 'y'], $headers)
             ->assertStatus(403)->assertJsonPath('error_code', 'PRODUCT_NOT_OWNED');
-        $this->postJson(self::PORTAL.'/interventions', ['intervention_type_id' => $this->type('release'), 'product_id' => $this->product->id, 'title' => 'x', 'description' => 'y'], $headers)
+        $this->postJson(self::PORTAL.'/interventions', ['intervention_type_id' => $this->type('fix'), 'product_id' => $this->product->id, 'title' => 'x', 'description' => 'y'], $headers)
             ->assertStatus(422)->assertJsonPath('error_code', 'TYPE_UNAVAILABLE');
 
         [, $prospectless] = $this->signedIn(null, 'new@example.test');
@@ -208,7 +208,7 @@ class InterventionWorkflowTest extends TestCase
 
         // Targeting named customers narrows the audience to them only.
         $this->postJson(self::API.'/interventions', [
-            'intervention_type_id' => $this->type('update'), 'product_id' => $this->product->id, 'title' => 'Hotfix for one site',
+            'intervention_type_id' => $this->type('service'), 'product_id' => $this->product->id, 'title' => 'Hotfix for one site',
             'description' => 'x', 'customer_ids' => [$mine->id],
         ])->assertCreated();
         $second = Intervention::query()->where('title', 'Hotfix for one site')->first();

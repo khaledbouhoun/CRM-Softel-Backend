@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Exceptions\BusinessRuleException;
 use App\Models\Intervention;
+use App\Models\InterventionAttachment;
 use App\Models\InterventionMessage;
 use App\Models\InterventionStatus;
 use App\Models\InterventionStatusTransition;
 use App\Models\InterventionType;
 use App\Models\PortalAccount;
 use App\Models\Prospect;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -70,11 +72,15 @@ class InterventionService
     }
 
     /** Moves along a configured transition. Customers may only use customer_allowed ones. */
-    public function transition(Intervention $intervention, int $toStatusId, string $actor, ?string $actorName = null, ?string $customerMessage = null): Intervention
+    public function transition(Intervention $intervention, int $toStatusId, string $actor, ?string $actorName = null, ?string $customerMessage = null, ?int $accountId = null): Intervention
     {
-        return DB::transaction(function () use ($intervention, $toStatusId, $actor, $actorName, $customerMessage) {
+        return DB::transaction(function () use ($intervention, $toStatusId, $actor, $actorName, $customerMessage, $accountId) {
             $locked = Intervention::query()->lockForUpdate()->findOrFail($intervention->id);
             $target = InterventionStatus::query()->findOrFail($toStatusId);
+
+            if ($actor === 'customer' && InterventionStatus::query()->whereKey($locked->intervention_status_id)->value('is_closed')) {
+                throw new BusinessRuleException('This intervention is closed. Only an employee can reopen it.', 'INTERVENTION_CLOSED', [], 422);
+            }
 
             $rule = InterventionStatusTransition::query()->where('is_active', true)
                 ->where('from_status_id', $locked->intervention_status_id)->where('to_status_id', $target->id)->first();
@@ -83,28 +89,49 @@ class InterventionService
                 throw new BusinessRuleException('This status change is not allowed.', 'INVALID_STATUS_TRANSITION', ['status' => ['This status change is not allowed.']], 422);
             }
 
+            $fromStatusId = $locked->intervention_status_id;
+
             $locked->update([
                 'intervention_status_id' => $target->id,
                 'closed_at' => $target->is_closed ? now() : null,
             ]);
 
-            InterventionMessage::query()->create([
-                'intervention_id' => $locked->id, 'author_type' => $actor, 'author_name' => $actorName,
-                'visibility' => 'customer', 'body' => $customerMessage ?? '', 'status_id' => $target->id,
-            ]);
+            $this->recordStatusEvent($locked, InterventionMessage::KIND_STATUS_CHANGE, $actor, $actorName, $fromStatusId, $target->id, $customerMessage, $actor === 'customer' ? $accountId : null);
 
             return $locked;
         });
     }
 
-    /** @param 'customer'|'internal' $visibility */
-    public function addMessage(Intervention $intervention, string $authorType, ?string $authorName, string $visibility, string $body): InterventionMessage
+    /**
+     * Replies are refused once the intervention reached a closing status, unless they are internal notes.
+     */
+    public function assertAcceptsReplies(Intervention $intervention, string $authorType, string $visibility = 'customer'): void
     {
-        return DB::transaction(function () use ($intervention, $authorType, $authorName, $visibility, $body) {
+        $intervention->loadMissing('status');
+
+        if ($intervention->isClosed() && ($authorType === 'customer' || $visibility === 'customer')) {
+            throw new BusinessRuleException('This intervention is closed. New replies are disabled.', 'INTERVENTION_CLOSED', [], 422);
+        }
+    }
+
+    /**
+     * @param  'customer'|'internal'  $visibility
+     * @param  list<UploadedFile>  $files  stored privately and linked to the reply
+     */
+    public function addMessage(Intervention $intervention, string $authorType, ?string $authorName, string $visibility, string $body, array $files = [], ?int $accountId = null): InterventionMessage
+    {
+        $this->assertAcceptsReplies($intervention, $authorType, $visibility);
+
+        return DB::transaction(function () use ($intervention, $authorType, $authorName, $visibility, $body, $files, $accountId) {
             $message = InterventionMessage::query()->create([
                 'intervention_id' => $intervention->id, 'author_type' => $authorType, 'author_name' => $authorName,
+                'portal_account_id' => $authorType === 'customer' ? $accountId : null,
                 'visibility' => $visibility, 'body' => $body,
             ]);
+
+            foreach ($files as $file) {
+                $this->storeAttachment($intervention, $file, $visibility, $authorType, $authorName, $message->id);
+            }
 
             // A customer answering a request for information moves it on through the configured customer transition.
             if ($authorType === 'customer') {
@@ -113,13 +140,79 @@ class InterventionService
                     $rule = InterventionStatusTransition::query()->where('is_active', true)->where('customer_allowed', true)
                         ->where('from_status_id', $current->id)->first();
                     if ($rule) {
-                        $this->transition($intervention, $rule->to_status_id, 'customer', $authorName);
+                        $this->transition($intervention, $rule->to_status_id, 'customer', $authorName, null, $accountId);
                     }
                 }
             }
 
             return $message;
         });
+    }
+
+    /** Stores one uploaded file on the configured private disk and records it. */
+    public function storeAttachment(Intervention $intervention, UploadedFile $file, string $visibility, string $uploaderType, ?string $uploaderName, ?int $messageId = null): InterventionAttachment
+    {
+        $path = $file->store('intervention-attachments/'.$intervention->id, ['disk' => $this->disk()]);
+
+        return InterventionAttachment::query()->create([
+            'intervention_id' => $intervention->id, 'message_id' => $messageId, 'visibility' => $visibility,
+            'uploaded_by_type' => $uploaderType, 'uploaded_by_name' => $uploaderName, 'path' => $path,
+            'original_name' => mb_substr($file->getClientOriginalName(), 0, 255),
+            'mime' => (string) $file->getMimeType(), 'size' => (int) $file->getSize(),
+        ]);
+    }
+
+    public function disk(): ?string
+    {
+        return config('crm.uploads.disk');
+    }
+
+    /**
+     * Employees reopen a closed intervention. It goes back to the status it had before it was closed
+     * (or the initial status), or to $statusId when given; it must be an open, active status.
+     */
+    public function reopen(Intervention $intervention, ?string $actorName, ?int $statusId = null, ?string $note = null): Intervention
+    {
+        return DB::transaction(function () use ($intervention, $actorName, $statusId, $note) {
+            $locked = Intervention::query()->with('status')->lockForUpdate()->findOrFail($intervention->id);
+
+            if (! $locked->isClosed()) {
+                throw new BusinessRuleException('Only a closed intervention can be reopened.', 'INTERVENTION_NOT_CLOSED', [], 422);
+            }
+
+            $target = $statusId ? InterventionStatus::query()->find($statusId) : $this->statusBeforeClosing($locked);
+
+            if (! $target || ! $target->is_active || $target->is_closed) {
+                throw new BusinessRuleException('Choose an active status that keeps the intervention open.', 'INVALID_REOPEN_STATUS', ['status_id' => ['This status cannot be used to reopen.']], 422);
+            }
+
+            $fromStatusId = $locked->intervention_status_id;
+            $locked->update(['intervention_status_id' => $target->id, 'closed_at' => null]);
+            $this->recordStatusEvent($locked, InterventionMessage::KIND_REOPENED, 'employee', $actorName, $fromStatusId, $target->id, $note, null);
+
+            return $locked;
+        });
+    }
+
+    private function statusBeforeClosing(Intervention $intervention): InterventionStatus
+    {
+        $previous = InterventionMessage::query()->where('intervention_id', $intervention->id)
+            ->where('kind', InterventionMessage::KIND_STATUS_CHANGE)->where('status_id', $intervention->intervention_status_id)
+            ->latest('id')->value('from_status_id');
+
+        $status = $previous ? InterventionStatus::query()->find($previous) : null;
+
+        return $status && $status->is_active && ! $status->is_closed ? $status : $this->initialStatus();
+    }
+
+    /** One inline timeline entry: who changed the status, from what, to what (and when = created_at). */
+    private function recordStatusEvent(Intervention $intervention, string $kind, string $actorType, ?string $actorName, ?int $fromStatusId, int $toStatusId, ?string $note, ?int $accountId): InterventionMessage
+    {
+        return InterventionMessage::query()->create([
+            'intervention_id' => $intervention->id, 'kind' => $kind, 'author_type' => $actorType, 'author_name' => $actorName,
+            'portal_account_id' => $accountId, 'visibility' => 'customer', 'body' => $note ?? '',
+            'from_status_id' => $fromStatusId, 'status_id' => $toStatusId,
+        ]);
     }
 
     public function publish(Intervention $intervention, string $customerResolution): Intervention

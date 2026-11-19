@@ -63,6 +63,11 @@ class Intervention extends Model
         return $this->hasMany(InterventionMessage::class)->orderBy('id');
     }
 
+    public function isClosed(): bool
+    {
+        return (bool) $this->status?->is_closed;
+    }
+
     public function attachments(): HasMany
     {
         return $this->hasMany(InterventionAttachment::class);

@@ -33,16 +33,27 @@ class InterventionResource extends ApiResource
             'customer_resolution' => $this->customer_resolution,
             'scheduled_at' => $this->iso($this->scheduled_at),
             'closed_at' => $this->iso($this->closed_at),
+            'is_closed' => (bool) $this->status?->is_closed,
+            'can_reply' => ! $this->status?->is_closed,
             'messages' => $this->whenLoaded('messages', fn () => $this->messages->map(fn ($m) => [
-                'id' => $m->id, 'author_type' => $m->author_type, 'author_name' => $m->author_name,
-                'visibility' => $m->visibility, 'body' => $m->body, 'status_id' => $m->status_id,
+                'id' => $m->id, 'kind' => $m->kind, 'author_type' => $m->author_type, 'author_name' => $m->author_name,
+                'sender' => ChatPresenter::sender($m, false), 'event' => ChatPresenter::event($m, false),
+                'visibility' => $m->visibility, 'body' => $m->body, 'status_id' => $m->status_id, 'from_status_id' => $m->from_status_id,
+                'attachments' => $m->relationLoaded('attachments')
+                    ? $m->attachments->map(fn ($a) => $this->file($a))->values()->all() : [],
                 'created_at' => $this->iso($m->created_at),
             ])->all()),
-            'attachments' => $this->whenLoaded('attachments', fn () => $this->attachments->map(fn ($a) => [
-                'id' => $a->id, 'name' => $a->original_name, 'mime' => $a->mime, 'size' => $a->size, 'visibility' => $a->visibility,
-            ])->all()),
+            'attachments' => $this->whenLoaded('attachments', fn () => $this->attachments->map(fn ($a) => $this->file($a))->all()),
             'created_at' => $this->iso($this->created_at),
             'updated_at' => $this->iso($this->updated_at),
         ];
+    }
+
+    /** @return array<string, mixed> */
+    private function file($a): array
+    {
+        return ChatPresenter::attachment($a, [
+            'download' => 'api.v1.interventions.attachments.download', 'preview' => 'api.v1.interventions.attachments.preview',
+        ], ['intervention' => $this->id], true);
     }
 }

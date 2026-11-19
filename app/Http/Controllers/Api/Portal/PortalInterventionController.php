@@ -15,6 +15,7 @@ use App\Models\InterventionStatus;
 use App\Models\InterventionStatusTransition;
 use App\Models\InterventionType;
 use App\Models\PortalAccount;
+use App\Services\AttachmentResponder;
 use App\Services\InterventionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /** Interventions the signed-in customer's company raised itself (source = customer). */
 class PortalInterventionController extends Controller
 {
-    private const WITH = ['type', 'status', 'product', 'messages.status', 'attachments'];
+    private const WITH = ['type', 'status', 'product', 'messages.status', 'messages.fromStatus', 'messages.account', 'messages.attachments', 'attachments'];
 
     public function __construct(private readonly InterventionService $interventions) {}
 
@@ -70,7 +71,7 @@ class PortalInterventionController extends Controller
     public function message(PortalMessageRequest $request, int $id): JsonResponse
     {
         $intervention = $this->own($request, $id);
-        $this->interventions->addMessage($intervention, 'customer', $this->account($request)->name, 'customer', $request->validated('body'));
+        $this->interventions->addMessage($intervention, 'customer', $this->account($request)->name, 'customer', $request->validated('body'), [], $this->account($request)->id);
 
         return ApiResponse::success(PortalPresenter::intervention($this->own($request, $id), true), 'Message sent.');
     }
@@ -79,7 +80,7 @@ class PortalInterventionController extends Controller
     public function transition(PortalTransitionRequest $request, int $id): JsonResponse
     {
         $intervention = $this->own($request, $id);
-        $this->interventions->transition($intervention, (int) $request->validated('status_id'), 'customer', $this->account($request)->name, $request->validated('message'));
+        $this->interventions->transition($intervention, (int) $request->validated('status_id'), 'customer', $this->account($request)->name, $request->validated('message'), $this->account($request)->id);
 
         return ApiResponse::success(PortalPresenter::intervention($this->own($request, $id), true), 'Request updated.');
     }
@@ -87,13 +88,8 @@ class PortalInterventionController extends Controller
     public function attach(PortalAttachmentRequest $request, int $id): JsonResponse
     {
         $intervention = $this->own($request, $id);
-        $file = $request->file('file');
-        $path = $file->store('intervention-attachments/'.$intervention->id); // private "local" disk, never public
-
-        InterventionAttachment::query()->create([
-            'intervention_id' => $intervention->id, 'visibility' => 'customer', 'path' => $path,
-            'original_name' => mb_substr($file->getClientOriginalName(), 0, 255), 'mime' => (string) $file->getMimeType(), 'size' => $file->getSize(),
-        ]);
+        $this->interventions->assertAcceptsReplies($intervention, 'customer');
+        $this->interventions->storeAttachment($intervention, $request->file('file'), 'customer', 'customer', $this->account($request)->name);
 
         return ApiResponse::created(PortalPresenter::intervention($this->own($request, $id), true), 'File uploaded.');
     }
@@ -104,7 +100,17 @@ class PortalInterventionController extends Controller
         $attachment = $intervention->attachments->where('visibility', 'customer')->firstWhere('id', $attachmentId);
         abort_if($attachment === null, 404);
 
-        return Storage::download($attachment->path, $attachment->original_name);
+        return AttachmentResponder::download($attachment, $this->interventions->disk());
+    }
+
+    /** Inline preview for images and PDFs; other files are downloaded instead. */
+    public function preview(Request $request, int $id, int $attachmentId): StreamedResponse
+    {
+        $intervention = $this->own($request, $id);
+        $attachment = $intervention->attachments->where('visibility', 'customer')->firstWhere('id', $attachmentId);
+        abort_if($attachment === null, 404);
+
+        return AttachmentResponder::preview($attachment, $this->interventions->disk());
     }
 
     /** Statuses a customer may move to from the current one (drives the "reopen" button). */
