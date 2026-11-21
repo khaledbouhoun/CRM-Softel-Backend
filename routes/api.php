@@ -69,6 +69,7 @@ Route::prefix('v1')
         Route::post('follow-ups/{followUp}/cancel', [FollowUpController::class, 'cancel'])->name('follow-ups.cancel');
 
         // Configuration
+        Route::post('products/upload-demo', [ProductController::class, 'uploadDemo'])->name('products.upload-demo');
         Route::apiResource('products', ProductController::class);
         Route::apiResource('packs', PackController::class);
 

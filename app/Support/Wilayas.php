@@ -32,6 +32,10 @@ final class Wilayas
 
         $key = self::key($value);
 
+        if ($key === 'algiers') {
+            return collect(self::all())->firstWhere('code', '16');
+        }
+
         return collect(self::all())->first(fn ($w) => self::key($w['name']) === $key || self::key($w['name_ar']) === $key);
     }
 

@@ -55,14 +55,4 @@ class PortalSubmitRequest extends ApiFormRequest
             'slot_start' => ['nullable', 'date'],
         ];
     }
-
-    /** A time slot is held for a single product: several products cannot share one slot. */
-    public function withValidator(Validator $validator): void
-    {
-        $validator->after(function (Validator $v) {
-            if (count((array) $this->input('product_ids', [])) > 1 && filled($this->input('slot_start'))) {
-                $v->errors()->add('product_ids', 'A demo time slot can only be booked for one product at a time.');
-            }
-        });
-    }
 }

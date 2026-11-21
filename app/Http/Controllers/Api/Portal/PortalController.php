@@ -189,11 +189,27 @@ class PortalController extends Controller
         }
 
         // Several products: one request per product, all-or-nothing.
+        // For demos, the appointment slot is booked on the first product and linked to the batch.
         $ids = $data['product_ids'];
         unset($data['product_ids']);
-        $created = DB::transaction(fn () => collect($ids)
-            ->map(fn ($id) => PortalPresenter::request($this->requests->submit($account, $data + ['product_id' => $id])))
-            ->all());
+        $created = DB::transaction(function () use ($account, $data, $ids) {
+            $appointmentId = null;
+            $res = [];
+            foreach ($ids as $index => $id) {
+                $subData = $data + ['product_id' => $id];
+                if ($index > 0 && $appointmentId) {
+                    $subData['appointment_id'] = $appointmentId;
+                    unset($subData['slot_start']);
+                }
+                $req = $this->requests->submit($account, $subData);
+                if ($index === 0 && $req->appointment_id) {
+                    $appointmentId = $req->appointment_id;
+                }
+                $res[] = PortalPresenter::request($req);
+            }
+
+            return $res;
+        });
 
         return ApiResponse::created($created, 'Requests received.');
     }

@@ -95,13 +95,13 @@ class PackSelectionTest extends TestCase
             ->assertCreated()->assertJsonPath('data.product.id', $this->solo->id);
     }
 
-    public function test_a_demo_slot_cannot_be_shared_by_several_products(): void
+    public function test_a_demo_slot_can_be_booked_for_several_products_one_per_pack(): void
     {
         [, $headers] = $this->signedIn();
-        $payload = $this->requestPayload($this->solo);
+        $payload = $this->requestPayload($this->solo, '2026-11-18 10:00:00');
         unset($payload['product_id']);
 
         $this->postJson(self::PORTAL.'/requests', $payload + ['product_ids' => [$this->solo->id, $this->other->id]], $headers)
-            ->assertStatus(422)->assertJsonValidationErrors('product_ids');
+            ->assertCreated()->assertJsonCount(2, 'data');
     }
 }

@@ -10,6 +10,8 @@ use App\Http\Responses\ApiResponse;
 use App\Models\Product;
 use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
@@ -46,7 +48,7 @@ class ProductController extends Controller
     public function show(Product $product): JsonResponse
     {
         return ApiResponse::success(
-            new ProductResource($product->loadCount('prospects')),
+            new ProductResource($product->loadCount('prospects')->load('pack')),
             'Product retrieved successfully.',
         );
     }
@@ -54,7 +56,7 @@ class ProductController extends Controller
     public function store(ProductRequest $request): JsonResponse
     {
         return ApiResponse::created(
-            new ProductResource($this->products->create($request->validated())->loadCount('prospects')),
+            new ProductResource($this->products->create($request->validated())->loadCount('prospects')->load('pack')),
             'Product created successfully.',
         );
     }
@@ -62,7 +64,7 @@ class ProductController extends Controller
     public function update(ProductRequest $request, Product $product): JsonResponse
     {
         return ApiResponse::success(
-            new ProductResource($this->products->update($product, $request->validated())->loadCount('prospects')),
+            new ProductResource($this->products->update($product, $request->validated())->loadCount('prospects')->load('pack')),
             'Product updated successfully.',
         );
     }
@@ -72,5 +74,35 @@ class ProductController extends Controller
         $this->products->delete($product);
 
         return ApiResponse::success(null, 'Product deleted successfully.');
+    }
+
+    public function uploadDemo(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:'.config('crm.uploads.installer_max_kb', 1048576)],
+            'product_id' => ['nullable', 'integer', 'exists:products,id'],
+        ]);
+
+        $file = $request->file('file');
+        $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $ext = $file->getClientOriginalExtension() ?: 'exe';
+        $safeName = Str::slug($filename).'_'.time().'.'.$ext;
+
+        $path = $file->storeAs('products/demos', $safeName, 'public');
+        $url = asset('storage/'.$path);
+
+        if ($request->filled('product_id')) {
+            $product = Product::find($request->input('product_id'));
+            if ($product) {
+                $product->update(['demo_url' => $url]);
+            }
+        }
+
+        return ApiResponse::success([
+            'url' => $url,
+            'filename' => $file->getClientOriginalName(),
+            'size' => $file->getSize(),
+            'path' => $path,
+        ], 'Demo file uploaded successfully.');
     }
 }

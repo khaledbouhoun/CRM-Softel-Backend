@@ -30,7 +30,7 @@ class PortalRequestService
             throw new BusinessRuleException('This product is not available.', 'PRODUCT_UNAVAILABLE', ['product_id' => ['This product is not available.']], 422);
         }
 
-        if ($data['type'] === 'demo' && empty($data['slot_start'])) {
+        if ($data['type'] === 'demo' && empty($data['slot_start']) && empty($data['appointment_id'])) {
             throw new BusinessRuleException('Please choose a demo time.', 'SLOT_REQUIRED', ['slot_start' => ['Please choose a demo time.']], 422);
         }
 
@@ -56,7 +56,9 @@ class PortalRequestService
 
             app(PortalProfileService::class)->remember($account, $data);
 
-            if (! empty($data['slot_start'])) {
+            if (! empty($data['appointment_id'])) {
+                $request->update(['appointment_id' => (int) $data['appointment_id']]);
+            } elseif (! empty($data['slot_start'])) {
                 $appointment = $this->appointments->hold($account, $prospect, $product, Carbon::parse($data['slot_start'], config('app.timezone')), $data['notes'] ?? null);
                 $request->update(['appointment_id' => $appointment->id]);
             }

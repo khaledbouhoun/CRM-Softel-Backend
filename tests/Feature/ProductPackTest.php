@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Pack;
 use App\Models\Product;
 use App\Rules\OneProductPerPack;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
@@ -51,5 +53,22 @@ class ProductPackTest extends TestCase
         $this->getJson('/api/portal/v1/catalog/products', ['X-Portal-Key' => 'key'])
             ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Live');
         $this->getJson('/api/portal/v1/catalog/products')->assertStatus(401);
+    }
+
+    public function test_upload_demo_file_stores_file_and_returns_url(): void
+    {
+        Storage::fake('public');
+        $file = UploadedFile::fake()->create('setup.exe', 1024, 'application/x-msdownload');
+        $product = Product::factory()->create();
+
+        $res = $this->post(self::API.'/products/upload-demo', [
+            'file' => $file,
+            'product_id' => $product->id,
+        ])->assertOk()
+            ->assertJsonPath('data.filename', 'setup.exe');
+
+        $url = $res->json('data.url');
+        $this->assertNotEmpty($url);
+        $this->assertSame($url, $product->fresh()->demo_url);
     }
 }
