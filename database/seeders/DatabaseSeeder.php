@@ -16,7 +16,9 @@ class DatabaseSeeder extends Seeder
             PortalDefaultsSeeder::class,
         ]);
 
-        if (! app()->runningUnitTests()) {
+        // Fictitious demo records: never in tests, never on the production database
+        // (`php artisan db:seed --force` is part of the production install steps).
+        if (! app()->runningUnitTests() && ! app()->isProduction()) {
             $this->call(CrmDemoDataSeeder::class);
         }
     }
