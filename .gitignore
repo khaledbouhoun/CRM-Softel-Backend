@@ -29,3 +29,8 @@ Homestead.json
 .env.production
 .phpactor.json
 auth.json
+
+# Local editor / assistant settings (machine-specific paths)
+/.claude/
+/.idea/
+/.vscode/
