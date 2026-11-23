@@ -8,7 +8,7 @@ use Illuminate\Validation\Rule;
 
 class IndexProspectRequest extends ApiFormRequest
 {
-    public const SORTABLE = ['name', 'city', 'created_at', 'updated_at'];
+    public const SORTABLE = ['name', 'city', 'phone', 'stage', 'created_at', 'updated_at'];
 
     public function rules(): array
     {
@@ -19,6 +19,7 @@ class IndexProspectRequest extends ApiFormRequest
             'product_id' => ['sometimes', 'integer'],
             'product_relation' => ['sometimes', Rule::enum(ProductRelation::class)],
             'loss_reason_id' => ['sometimes', 'integer'],
+            'converted' => ['sometimes', 'string', 'in:active_only,converted_only,all'],
             'city' => ['sometimes', 'string', 'max:100'],
             'source' => ['sometimes', 'string', 'max:50'],
             'business_activity' => ['sometimes', 'string', 'max:150'],

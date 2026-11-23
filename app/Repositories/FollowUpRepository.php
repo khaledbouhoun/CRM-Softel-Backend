@@ -58,7 +58,16 @@ class FollowUpRepository
         $sort = $filters['sort'] ?? 'scheduled_at';
         $direction = $this->direction($filters, $sort === 'scheduled_at' ? 'asc' : 'desc');
 
-        return $query->orderBy($sort, $direction)->orderBy('id', $direction)
+        if ($sort === 'prospect') {
+            $query->orderBy(
+                Prospect::query()->withTrashed()->select('name')->whereColumn('prospects.id', 'follow_up_tasks.prospect_id'),
+                $direction,
+            );
+        } else {
+            $query->orderBy($sort, $direction);
+        }
+
+        return $query->orderBy('id', $direction)
             ->paginate($this->perPage($filters))->withQueryString();
     }
 }

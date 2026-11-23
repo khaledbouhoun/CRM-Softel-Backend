@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api\V1;
 
 use App\Models\Prospect;
+use App\Models\Subscription;
 use Illuminate\Http\Request;
 
 /** @mixin Prospect */
@@ -41,6 +42,9 @@ class ProspectResource extends ApiResource
             'converted_at' => $this->iso($this->converted_at),
             'converted_by' => $this->converted_by,
             'conversion_note' => $this->conversion_note,
+            // Customer list only: maintenance plan summary and portal-account count.
+            'maintenance' => $this->whenLoaded('subscriptions', fn () => BillingPresenter::maintenance($this->subscriptions->firstWhere('type', Subscription::MAINTENANCE))),
+            'portal_accounts_count' => $this->whenCounted('portalAccounts'),
             'products' => ProductResource::collection($this->whenLoaded('products')),
             'activities_count' => $this->whenCounted('activities'),
             'pending_follow_ups_count' => $this->whenCounted('pendingFollowUps'),

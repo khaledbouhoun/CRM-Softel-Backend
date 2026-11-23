@@ -15,6 +15,7 @@ class ProspectFormOption extends Model
         'previous_software',
         'business_activity',
         'profession',
+        'city',
     ];
 
     protected $fillable = [
@@ -59,6 +60,7 @@ class ProspectFormOption extends Model
             'previous_software' => 'previous_software',
             'business_activity' => 'business_activity',
             'profession' => 'profession',
+            'city' => 'city',
             default => null,
         };
 

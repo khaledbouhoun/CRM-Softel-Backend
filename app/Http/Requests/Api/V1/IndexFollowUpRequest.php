@@ -10,7 +10,7 @@ class IndexFollowUpRequest extends ApiFormRequest
     /** Due windows; all imply status = pending. See FollowUpTask. */
     public const SCOPES = ['overdue', 'today', 'upcoming'];
 
-    public const SORTABLE = ['scheduled_at', 'created_at', 'completed_at'];
+    public const SORTABLE = ['scheduled_at', 'created_at', 'completed_at', 'status', 'prospect'];
 
     public function rules(): array
     {

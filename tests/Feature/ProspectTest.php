@@ -233,4 +233,32 @@ class ProspectTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['sort', 'per_page']);
     }
+
+    public function test_list_hides_converted_prospects_by_default_and_filters_on_demand(): void
+    {
+        $active = Prospect::factory()->inStage($this->demoStage)->create(['name' => 'Active Co']);
+        $customer = Prospect::factory()->inStage($this->demoStage)->create(['name' => 'Customer Co']);
+        $customer->forceFill(['converted_at' => now()])->save();
+
+        $ids = fn (string $qs) => collect($this->getJson(self::API.'/prospects'.$qs)->assertOk()->json('data'))->pluck('id')->all();
+
+        $this->assertSame([$active->id], $ids(''));
+        $this->assertSame([$customer->id], $ids('?converted=converted_only'));
+        $this->assertEqualsCanonicalizing([$active->id, $customer->id], $ids('?converted=all'));
+        $this->getJson(self::API.'/prospects?converted=bogus')->assertStatus(422);
+    }
+
+    public function test_list_sorts_by_phone_and_stage_and_filters_catalog_values_flexibly(): void
+    {
+        $a = Prospect::factory()->inStage($this->demoStage)->create(['name' => 'A', 'phone' => '0777', 'source' => 'facebook_ads']);
+        $b = Prospect::factory()->inStage($this->demoStage)->create(['name' => 'B', 'phone' => '0555', 'source' => 'Referral']);
+
+        $ids = fn (string $qs) => collect($this->getJson(self::API.'/prospects'.$qs)->assertOk()->json('data'))->pluck('id')->all();
+
+        $this->assertSame([$b->id, $a->id], $ids('?sort=phone&direction=asc'));
+        $this->assertSame([$a->id], $ids('?source=Facebook%20Ads'));
+        $this->assertSame([$a->id], $ids('?source=facebook_ads'));
+        $this->assertCount(2, $ids('?sort=stage&direction=asc'));
+        $this->getJson(self::API.'/prospects?sort=bogus')->assertStatus(422);
+    }
 }

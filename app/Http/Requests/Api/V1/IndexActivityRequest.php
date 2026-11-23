@@ -30,6 +30,7 @@ class IndexActivityRequest extends ApiFormRequest
             'date_from' => ['sometimes', 'date_format:Y-m-d'],
             'date_to' => ['sometimes', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'search' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'sort' => ['sometimes', 'in:activity_at,type,prospect'],
             ...$this->paginationRules(),
         ];
     }

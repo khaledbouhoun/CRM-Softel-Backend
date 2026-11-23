@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Prospect;
 use App\Models\ProspectStageHistory;
+use App\Models\SalesStage;
 use App\Repositories\Concerns\PaginatesFilters;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,7 +15,7 @@ class ProspectRepository
 
   /**
    * Filters: search, sales_stage_id, stage_type, product_id, loss_reason_id,
-   * city, created_from/created_to, updated_from/updated_to, sort, direction,
+   * converted (active_only default | converted_only | all), city, created_from/created_to, updated_from/updated_to, sort, direction,
    * per_page.
    */
   public function paginate(array $filters): LengthAwarePaginator
@@ -25,10 +26,25 @@ class ProspectRepository
       $this->applySearch($query, trim($filters['search']));
     }
 
+    // Catalog values are stored either as the option name ("Facebook Ads") or
+    // as a legacy snake_case code ("facebook_ads"): match both spellings.
     foreach (['source', 'business_activity', 'previous_software'] as $column) {
       if (filled($filters[$column] ?? null)) {
-        $query->where($column, $filters[$column]);
+        $value = trim((string) $filters[$column]);
+        $query->whereIn($column, array_values(array_unique([
+          $value,
+          str_replace(' ', '_', mb_strtolower($value)),
+          str_replace('_', ' ', $value),
+        ])));
       }
+    }
+
+    // Default: only active prospects. Converted leads become customers and leave the pipeline.
+    $converted = $filters['converted'] ?? 'active_only';
+    if ($converted === 'active_only') {
+      $query->whereNull('prospects.converted_at');
+    } elseif ($converted === 'converted_only') {
+      $query->whereNotNull('prospects.converted_at');
     }
 
     if (isset($filters['sales_stage_id'])) {
@@ -55,8 +71,17 @@ class ProspectRepository
     $this->applyDayRange($query, 'prospects.updated_at', $filters['updated_from'] ?? null, $filters['updated_to'] ?? null);
 
     $sort = $filters['sort'] ?? 'created_at';
-    $query->orderBy($sort, $this->direction($filters, $sort === 'name' || $sort === 'city' ? 'asc' : 'desc'))
-      ->orderBy('id', 'desc');
+    $direction = $this->direction($filters, in_array($sort, ['name', 'city', 'phone', 'stage'], true) ? 'asc' : 'desc');
+    if ($sort === 'stage') {
+      // Pipeline order (the stage position), not alphabetical.
+      $query->orderBy(
+        SalesStage::query()->select('sort_order')->whereColumn('sales_stages.id', 'prospects.sales_stage_id'),
+        $direction,
+      );
+    } else {
+      $query->orderBy($sort, $direction);
+    }
+    $query->orderBy('id', 'desc');
 
     return $query->paginate($this->perPage($filters))->withQueryString();
   }

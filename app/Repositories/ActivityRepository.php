@@ -69,6 +69,16 @@ class ActivityRepository
 
         $direction = $this->direction($filters);
 
+        $sort = $filters['sort'] ?? 'activity_at';
+        if ($sort === 'prospect') {
+            $query->orderBy(
+                Prospect::query()->withTrashed()->select('name')->whereColumn('prospects.id', 'activities.prospect_id'),
+                $direction,
+            );
+        } elseif ($sort === 'type') {
+            $query->orderBy('type', $direction);
+        }
+
         return $query->orderBy('activity_at', $direction)->orderBy('id', $direction)
             ->paginate($this->perPage($filters))->withQueryString();
     }

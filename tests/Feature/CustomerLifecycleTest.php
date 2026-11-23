@@ -244,4 +244,42 @@ class CustomerLifecycleTest extends TestCase
         $this->assertSame(['Guide'], $titles);
         $this->assertSame($mine->id, PortalAccount::query()->where('email', 'mine@example.test')->value('prospect_id'));
     }
+
+    public function test_customer_profile_includes_the_prospect_archive(): void
+    {
+        $prospect = $this->prospect();
+        $activity = Activity::factory()->create(['prospect_id' => $prospect->id]);
+        $this->postJson(self::API."/prospects/{$prospect->id}/convert", ['product_ids' => []])->assertOk();
+
+        $response = $this->getJson(self::API."/customers/{$prospect->id}")->assertOk()
+            ->assertJsonPath('data.prospect.id', $prospect->id)
+            ->assertJsonStructure(['data' => ['prospect', 'stage_history', 'activities', 'subscriptions', 'interventions', 'products', 'portal_accounts', 'trials', 'appointments']]);
+
+        $this->assertNotEmpty($response->json('data.stage_history'));
+        $this->assertContains($activity->id, collect($response->json('data.activities'))->pluck('id')->all());
+    }
+
+    public function test_customer_list_filters_by_maintenance_and_portal_access(): void
+    {
+        $withPlan = Prospect::factory()->inStage($this->demoStage)->create(['name' => 'Plan Co', 'email' => 'plan@example.test']);
+        $noPlan = Prospect::factory()->inStage($this->demoStage)->create(['name' => 'NoPlan Co']);
+        foreach ([$withPlan, $noPlan] as $p) {
+            $this->postJson(self::API."/prospects/{$p->id}/convert", ['product_ids' => []])->assertOk();
+        }
+        // Conversion starts a free maintenance period; set known dates for the filters.
+        \App\Models\Subscription::query()->where('prospect_id', $withPlan->id)->where('type', \App\Models\Subscription::MAINTENANCE)
+            ->update(['status' => 'active', 'expires_at' => now()->addDays(20)]);
+        \App\Models\Subscription::query()->where('prospect_id', $noPlan->id)->where('type', \App\Models\Subscription::MAINTENANCE)
+            ->update(['status' => 'expired', 'expires_at' => now()->subDays(5)]);
+
+        $ids = fn (string $qs) => collect($this->getJson(self::API.'/customers'.$qs)->assertOk()->json('data'))->pluck('id')->all();
+
+        $this->assertSame([$withPlan->id], $ids('?maintenance=active'));
+        $this->assertSame([$withPlan->id], $ids('?maintenance=expiring'));
+        $this->assertSame([$noPlan->id], $ids('?maintenance=expired_none'));
+        $this->assertSame([$withPlan->id], $ids('?search=plan@example'));
+        $this->assertEqualsCanonicalizing([$withPlan->id, $noPlan->id], $ids('?portal=no_account'));
+        $this->assertSame([], $ids('?portal=has_account'));
+        $this->getJson(self::API.'/customers?maintenance=active')->assertJsonPath('data.0.maintenance.status', 'expiring_soon');
+    }
 }
