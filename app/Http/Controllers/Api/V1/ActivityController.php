@@ -38,8 +38,11 @@ class ActivityController extends Controller
     /** Native activity: the prospect or follow-up is optional. */
     public function store(StoreNativeActivityRequest $request, ActivityService $activities): JsonResponse
     {
+        $activity = $activities->createNative($request->validated());
+        $activity->forceFill(['created_by' => $this->actor($request)])->saveQuietly();
+
         return ApiResponse::created(
-            new ActivityResource($activities->createNative($request->validated())),
+            new ActivityResource($activity),
             'Activity created successfully.',
         );
     }

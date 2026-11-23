@@ -25,8 +25,11 @@ class ProspectActivityController extends Controller
 
     public function store(StoreActivityRequest $request, Prospect $prospect, ActivityService $activities): JsonResponse
     {
+        $activity = $activities->create($prospect, $request->validated());
+        $activity->forceFill(['created_by' => $this->actor($request)])->saveQuietly();
+
         return ApiResponse::created(
-            new ActivityResource($activities->create($prospect, $request->validated())),
+            new ActivityResource($activity),
             'Activity created successfully.',
         );
     }

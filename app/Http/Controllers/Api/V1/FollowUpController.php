@@ -49,12 +49,15 @@ class FollowUpController extends Controller
     {
         $data = $request->validated();
 
+        $done = $this->followUps->complete(
+            $followUp,
+            $data['closing_note'] ?? null,
+            ($data['create_activity'] ?? false) ? $data : null,
+        );
+        $done->forceFill(['completed_by' => $this->actor($request)])->saveQuietly();
+
         return ApiResponse::success(
-            new FollowUpTaskResource($this->followUps->complete(
-                $followUp,
-                $data['closing_note'] ?? null,
-                ($data['create_activity'] ?? false) ? $data : null,
-            )),
+            new FollowUpTaskResource($done),
             'Follow-up completed successfully.',
         );
     }

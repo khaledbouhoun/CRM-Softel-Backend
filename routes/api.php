@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\ProspectStageController;
 use App\Http\Controllers\Api\V1\SalesStageController;
 use App\Http\Controllers\Api\V1\SchedulingSettingsController;
 use App\Http\Controllers\Api\V1\SettingsHelpController;
+use App\Http\Controllers\Api\V1\EmployeeSessionController;
 use App\Http\Controllers\Api\V1\SystemController;
 use App\Http\Controllers\Api\V1\TrialController;
 use App\Http\Middleware\RestrictToAllowedNetworks;
@@ -39,7 +40,9 @@ Route::prefix('v1')
         Route::get('health', [SystemController::class, 'health'])->name('health');
         Route::get('lookups', [SystemController::class, 'lookups'])->name('lookups');
         Route::post('system/heartbeat', [SystemController::class, 'heartbeat'])->name('system.heartbeat');
-        Route::get('system/employees', [SystemController::class, 'employees'])->name('system.employees');
+        Route::get('system/employees', [EmployeeSessionController::class, 'index'])->name('system.employees');
+        Route::post('system/employees/presence', [EmployeeSessionController::class, 'presence'])->name('system.employees.presence');
+        Route::put('system/employees/{employeeId}', [EmployeeSessionController::class, 'update'])->where('employeeId', '.+')->name('system.employees.update');
         Route::get('dashboard', DashboardController::class)->name('dashboard');
 
         // Prospects

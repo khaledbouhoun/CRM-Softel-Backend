@@ -13,7 +13,15 @@ class EmployeeSession extends Model
         'ip_address',
         'last_request_path',
         'last_heartbeat_at',
+        'custom_name',
+        'role',
+        'presence_status',
+        'status_note',
     ];
+
+    public const ROLES = ['sales', 'support', 'management', 'training'];
+
+    public const PRESENCE = ['available', 'busy', 'away', 'break'];
 
     protected $casts = [
         'last_heartbeat_at' => 'datetime',
