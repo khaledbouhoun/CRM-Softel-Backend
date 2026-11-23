@@ -5,11 +5,16 @@ namespace App\Services;
 use App\Enums\StageType;
 use App\Http\Resources\Api\V1\ActivityResource;
 use App\Models\Activity;
+use App\Models\Appointment;
 use App\Models\FollowUpTask;
+use App\Models\Intervention;
 use App\Models\LossReason;
+use App\Models\PortalRequest;
 use App\Models\Prospect;
 use App\Models\ProspectStageHistory;
 use App\Models\SalesStage;
+use App\Models\Subscription;
+use App\Models\Trial;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -37,6 +42,9 @@ class DashboardService
                 'won' => $byType[StageType::Won->value],
                 'lost' => $byType[StageType::Lost->value],
             ],
+            'customers' => $this->customers(),
+            'support' => $this->support(),
+            'operations' => $this->operations(),
             'prospects_by_stage' => $stages
                 // Inactive stages are listed only while prospects still sit in them.
                 ->filter(fn (SalesStage $s) => $s->is_active || $s->prospects_count > 0)
@@ -69,6 +77,46 @@ class DashboardService
                 ->map(fn (Activity $a) => (new ActivityResource($a))->resolve())
                 ->all(),
             'generated_at' => now()->toIso8601String(),
+        ];
+    }
+
+    /** Customers (converted prospects) and their maintenance plans. Lifetime licenses never expire and are not counted here. */
+    private function customers(): array
+    {
+        $now = now()->format('Y-m-d H:i:s');
+        $maintenance = fn () => Subscription::query()
+            ->where('type', Subscription::MAINTENANCE)
+            ->whereHas('prospect', fn (Builder $q) => $q->whereNull('prospects.deleted_at'));
+
+        return [
+            'total' => Prospect::query()->whereNotNull('converted_at')->count(),
+            'active_maintenance' => $maintenance()->where('status', 'active')->where('expires_at', '>=', $now)->count(),
+            'expiring_soon' => $maintenance()->where('status', 'active')
+                ->whereBetween('expires_at', [$now, now()->addDays(Subscription::EXPIRING_SOON_DAYS)->format('Y-m-d H:i:s')])->count(),
+            'expired' => $maintenance()->where('expires_at', '<', $now)->count(),
+        ];
+    }
+
+    /** Open (not closed) interventions; "urgent" = the P1 - Critical priority. */
+    private function support(): array
+    {
+        $open = fn () => Intervention::query()
+            ->whereHas('status', fn (Builder $q) => $q->where('is_closed', false));
+
+        return [
+            'open_tickets' => $open()->count(),
+            'urgent_tickets' => $open()->whereHas('priority', fn (Builder $q) => $q->where('code', 'p1'))->count(),
+            'pending_requests' => PortalRequest::query()->where('status', 'pending')->count(),
+        ];
+    }
+
+    private function operations(): array
+    {
+        return [
+            'appointments_today' => Appointment::query()->live()
+                ->whereBetween('starts_at', [now()->startOfDay()->format('Y-m-d H:i:s'), now()->endOfDay()->format('Y-m-d H:i:s')])
+                ->count(),
+            'active_trials' => Trial::query()->activeNow()->count(),
         ];
     }
 

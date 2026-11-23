@@ -4,11 +4,22 @@ namespace Tests\Feature;
 
 use App\Models\Activity;
 use App\Models\FollowUpTask;
+use App\Models\Intervention;
+use App\Models\InterventionPriority;
+use App\Models\InterventionStatus;
+use App\Models\InterventionType;
+use App\Models\PortalRequest;
+use App\Models\Product;
 use App\Models\Prospect;
+use App\Models\Subscription;
+use App\Models\Trial;
+use Tests\Concerns\CreatesPortalFixtures;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
 {
+    use CreatesPortalFixtures;
+
     public function test_dashboard_statistics_are_computed_from_the_database(): void
     {
         $this->createPipeline();
@@ -62,6 +73,56 @@ class DashboardTest extends TestCase
         $this->getJson(self::API.'/dashboard')
             ->assertOk()
             ->assertJsonPath('data.prospects.total', 0)
-            ->assertJsonPath('data.recent_activities', []);
+            ->assertJsonPath('data.recent_activities', [])
+            ->assertJsonPath('data.customers.total', 0)
+            ->assertJsonPath('data.support.open_tickets', 0)
+            ->assertJsonPath('data.operations.appointments_today', 0);
+    }
+
+    public function test_dashboard_exposes_customer_support_and_operations_metrics(): void
+    {
+        $this->setUpPortal(); // pipeline + intervention defaults, clock frozen at 2026-11-16 08:00
+        $product = Product::factory()->create();
+        [$customer, $account] = $this->customerWith($product);
+
+        // A lead (not converted) never counts as a customer.
+        Prospect::factory()->inStage($this->newStage)->create();
+
+        $maintenance = fn (Prospect $p, string $expires, string $status = 'active') => Subscription::query()->create([
+            'prospect_id' => $p->id, 'type' => 'maintenance', 'status' => $status, 'starts_at' => '2025-01-01', 'expires_at' => $expires,
+        ]);
+        $maintenance($customer, '2026-12-31'); // active, not expiring soon
+        $soon = Prospect::factory()->inStage($this->wonStage)->create(['converted_at' => now()]);
+        $maintenance($soon, '2026-11-30'); // active, expiring within 30 days
+        $old = Prospect::factory()->inStage($this->wonStage)->create(['converted_at' => now()]);
+        $maintenance($old, '2026-01-31', 'expired');
+
+        $open = fn (string $status, string $priority) => Intervention::query()->create([
+            'reference' => 'T-'.uniqid(), 'source' => 'customer',
+            'intervention_type_id' => InterventionType::where('code', 'bug')->value('id'),
+            'intervention_status_id' => InterventionStatus::where('code', $status)->value('id'),
+            'intervention_priority_id' => InterventionPriority::where('code', $priority)->value('id'),
+            'prospect_id' => $customer->id, 'title' => 'Issue', 'description' => 'Details',
+        ]);
+        $open('new', 'p1');
+        $open('in_progress', 'p3');
+        $open('closed', 'p1'); // closed tickets are excluded
+
+        PortalRequest::query()->create([
+            'portal_account_id' => $account->id, 'prospect_id' => $customer->id, 'type' => 'demo', 'status' => 'pending',
+            'company' => 'Atlas', 'contact_name' => 'Karim', 'phone' => '0555123456', 'email' => 'k@atlas.test', 'wilaya' => 'Alger', 'city' => 'Alger',
+        ]);
+
+        Trial::query()->create([
+            'prospect_id' => $customer->id, 'product_id' => $product->id,
+            'starts_at' => '2026-11-15 08:00:00', 'ends_at' => '2026-11-20 08:00:00', 'url' => 'https://trial.example.test',
+        ]);
+
+        $this->getJson(self::API.'/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.customers', ['total' => 3, 'active_maintenance' => 2, 'expiring_soon' => 1, 'expired' => 1])
+            ->assertJsonPath('data.support', ['open_tickets' => 2, 'urgent_tickets' => 1, 'pending_requests' => 1])
+            ->assertJsonPath('data.operations.active_trials', 1)
+            ->assertJsonPath('data.operations.appointments_today', 0);
     }
 }

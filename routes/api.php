@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\ActivityController;
+use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AppointmentController;
 use App\Http\Controllers\Api\V1\BillingStaffController;
 use App\Http\Controllers\Api\V1\CalendarController;
@@ -44,6 +45,7 @@ Route::prefix('v1')
         Route::post('system/employees/presence', [EmployeeSessionController::class, 'presence'])->name('system.employees.presence');
         Route::put('system/employees/{employeeId}', [EmployeeSessionController::class, 'update'])->where('employeeId', '.+')->name('system.employees.update');
         Route::get('dashboard', DashboardController::class)->name('dashboard');
+        Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
 
         // Prospects
         Route::apiResource('prospects', ProspectController::class);

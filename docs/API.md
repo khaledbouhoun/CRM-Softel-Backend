@@ -428,6 +428,14 @@ only active ones for new selections.
 
 ## 6. Prospects
 
+### GET /analytics
+
+Business-intelligence report for the Analytics hub, computed on each call.
+
+Query: `range` = `month` (default) | `quarter` | `year` | `all`; or `from` / `to` (dates, `to >= from`) for a custom period (`range` is then `custom`).
+
+`data` contains: `sales` (`funnel`, `loss_reasons`, `sources`, `by_city`, `avg_sales_cycle_days`), `revenue_maintenance` (customers, active/expired maintenance, `retention_rate`, `expiring_next_60_days`, `products_distribution`, `avg_pcs_per_customer`), `support` (tickets, resolution rate and hours, `by_type`, `demo_conversion` with codes `converted` / `not_converted`) and `team.leaderboard` (`employee`, `activities` = appointments + trials, `interventions` closed, `deals_won` = conversions). Ratios without data are `null`; blank sources, cities and loss reasons come back with a `null` label.
+
 ### GET /prospects
 
 Paginated. Each item is a full [Prospect](#34-prospect).
@@ -889,6 +897,7 @@ Only if never referenced by a prospect or stage history, else `409 RESOURCE_IN_U
 | GET | `/health` | connectivity + DB check |
 | GET | `/lookups` | enums + stages + reasons + products + settings |
 | GET | `/dashboard` | statistics |
+| GET | `/analytics` | BI report (range filter) |
 | GET | `/prospects` | list (search, filters, sort, pagination) |
 | POST | `/prospects` | create |
 | GET | `/prospects/{id}` | detail |
