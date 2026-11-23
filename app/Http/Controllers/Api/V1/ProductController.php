@@ -105,4 +105,31 @@ class ProductController extends Controller
             'path' => $path,
         ], 'Demo file uploaded successfully.');
     }
+
+    public function uploadImage(Request $request): JsonResponse
+    {
+        $request->validate([
+            'image' => ['required', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:5120'], // 5 MB
+            'product_id' => ['nullable', 'integer', 'exists:products,id'],
+        ]);
+
+        $file = $request->file('image');
+        $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $ext = $file->getClientOriginalExtension() ?: 'png';
+        $safeName = (Str::slug($filename) ?: 'image').'_'.time().'.'.$ext;
+
+        $path = $file->storeAs('products/images', $safeName, 'public');
+        $url = asset('storage/'.$path);
+
+        if ($request->filled('product_id')) {
+            Product::find($request->input('product_id'))?->update(['image_path' => $url]);
+        }
+
+        return ApiResponse::success([
+            'url' => $url,
+            'filename' => $file->getClientOriginalName(),
+            'size' => $file->getSize(),
+            'path' => $path,
+        ], 'Product image uploaded successfully.');
+    }
 }

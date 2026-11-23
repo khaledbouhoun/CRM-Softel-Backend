@@ -26,6 +26,11 @@ class Product extends Model
         'specifications',
         'is_active_on_web',
         'demo_url',
+        'title_i18n',
+        'summary_i18n',
+        'description_i18n',
+        'tech_stack_i18n',
+        'sort_order',
     ];
 
     protected function casts(): array
@@ -36,6 +41,11 @@ class Product extends Model
             'gallery' => 'array',
             'features' => 'array',
             'specifications' => 'array',
+            'title_i18n' => 'array',
+            'summary_i18n' => 'array',
+            'description_i18n' => 'array',
+            'tech_stack_i18n' => 'array',
+            'sort_order' => 'integer',
         ];
     }
 

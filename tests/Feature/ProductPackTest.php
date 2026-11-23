@@ -71,4 +71,30 @@ class ProductPackTest extends TestCase
         $this->assertNotEmpty($url);
         $this->assertSame($url, $product->fresh()->demo_url);
     }
+
+    public function test_upload_image_stores_file_and_updates_product_image_path(): void
+    {
+        Storage::fake('public');
+        $product = Product::factory()->create();
+
+        $res = $this->post(self::API.'/products/upload-image', [
+            'image' => UploadedFile::fake()->image('boxshot.png'),
+            'product_id' => $product->id,
+        ])->assertOk()
+            ->assertJsonPath('data.filename', 'boxshot.png');
+
+        $url = $res->json('data.url');
+        $this->assertStringContainsString('storage/products/images/', $url);
+        $this->assertSame($url, $product->fresh()->image_path);
+        Storage::disk('public')->assertExists($res->json('data.path'));
+    }
+
+    public function test_upload_image_rejects_non_image_files(): void
+    {
+        Storage::fake('public');
+
+        $this->post(self::API.'/products/upload-image', [
+            'image' => UploadedFile::fake()->create('setup.exe', 10, 'application/x-msdownload'),
+        ], ['Accept' => 'application/json'])->assertStatus(422);
+    }
 }

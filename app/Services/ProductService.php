@@ -13,6 +13,7 @@ class ProductService
     private const FIELDS = [
         'name', 'description', 'is_active', 'pack_id', 'slug', 'image_path', 'gallery',
         'full_description', 'features', 'specifications', 'is_active_on_web', 'demo_url',
+        'title_i18n', 'summary_i18n', 'description_i18n', 'tech_stack_i18n', 'sort_order',
     ];
 
     public function create(array $data): Product

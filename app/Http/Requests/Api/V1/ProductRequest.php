@@ -29,6 +29,17 @@ class ProductRequest extends ApiFormRequest
             'specifications' => ['sometimes', 'nullable', 'array', 'max:50'],
             'is_active_on_web' => ['sometimes', 'boolean'],
             'demo_url' => ['sometimes', 'nullable', 'url:http,https', 'max:500'],
+            // Per-language public texts: keys ar / fr / en.
+            'title_i18n' => ['sometimes', 'nullable', 'array:ar,fr,en'],
+            'title_i18n.*' => ['nullable', 'string', 'max:200'],
+            'summary_i18n' => ['sometimes', 'nullable', 'array:ar,fr,en'],
+            'summary_i18n.*' => ['nullable', 'string', 'max:1000'],
+            'description_i18n' => ['sometimes', 'nullable', 'array:ar,fr,en'],
+            'description_i18n.*' => ['nullable', 'string', 'max:20000'],
+            'tech_stack_i18n' => ['sometimes', 'nullable', 'array:ar,fr,en'],
+            'tech_stack_i18n.*' => ['nullable', 'array', 'max:30'],
+            'tech_stack_i18n.*.*' => ['string', 'max:150'],
+            'sort_order' => ['sometimes', 'integer', 'min:0', 'max:100000'],
         ];
     }
 }
