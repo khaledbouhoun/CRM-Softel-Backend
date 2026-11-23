@@ -10,6 +10,7 @@ use App\Models\PortalAccount;
 use App\Models\Product;
 use App\Models\Prospect;
 use App\Models\ProspectStageHistory;
+use App\Models\Subscription;
 use Tests\Concerns\CreatesPortalFixtures;
 use Tests\TestCase;
 
@@ -267,9 +268,9 @@ class CustomerLifecycleTest extends TestCase
             $this->postJson(self::API."/prospects/{$p->id}/convert", ['product_ids' => []])->assertOk();
         }
         // Conversion starts a free maintenance period; set known dates for the filters.
-        \App\Models\Subscription::query()->where('prospect_id', $withPlan->id)->where('type', \App\Models\Subscription::MAINTENANCE)
+        Subscription::query()->where('prospect_id', $withPlan->id)->where('type', Subscription::MAINTENANCE)
             ->update(['status' => 'active', 'expires_at' => now()->addDays(20)]);
-        \App\Models\Subscription::query()->where('prospect_id', $noPlan->id)->where('type', \App\Models\Subscription::MAINTENANCE)
+        Subscription::query()->where('prospect_id', $noPlan->id)->where('type', Subscription::MAINTENANCE)
             ->update(['status' => 'expired', 'expires_at' => now()->subDays(5)]);
 
         $ids = fn (string $qs) => collect($this->getJson(self::API.'/customers'.$qs)->assertOk()->json('data'))->pluck('id')->all();

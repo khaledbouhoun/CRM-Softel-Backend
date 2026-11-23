@@ -7,7 +7,6 @@ use App\Rules\OneProductPerPack;
 use App\Rules\ValidWilaya;
 use App\Services\PortalProfileService;
 use App\Support\Wilayas;
-use Illuminate\Validation\Validator;
 
 class PortalSubmitRequest extends ApiFormRequest
 {

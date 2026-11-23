@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\ProductRelease;
 use App\Models\Product;
+use App\Models\ProductRelease;
 use App\Models\Prospect;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;

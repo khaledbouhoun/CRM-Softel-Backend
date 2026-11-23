@@ -42,7 +42,9 @@ class StoreProspectRequest extends ApiFormRequest
             'source' => [
                 'sometimes', 'nullable', 'string', 'max:150',
                 function ($attribute, $value, $fail) {
-                    if ($value === null || $value === '') return;
+                    if ($value === null || $value === '') {
+                        return;
+                    }
                     $trimmed = trim($value);
                     if (preg_match('/^[a-z][a-z0-9_]*$/', $trimmed)) {
                         return;
@@ -79,7 +81,7 @@ class StoreProspectRequest extends ApiFormRequest
 
         foreach ($fields as $type => $detailKeys) {
             $value = $input[$type] ?? null;
-            if (!$value || !is_string($value) || trim($value) === '') {
+            if (! $value || ! is_string($value) || trim($value) === '') {
                 continue;
             }
 
@@ -88,20 +90,20 @@ class StoreProspectRequest extends ApiFormRequest
                 ->where('type', $type)
                 ->where(function ($q) use ($trimmed) {
                     $q->where('name', $trimmed)
-                      ->orWhereRaw('LOWER(name) = ?', [strtolower($trimmed)]);
+                        ->orWhereRaw('LOWER(name) = ?', [strtolower($trimmed)]);
                 })
                 ->first();
 
             if ($option && $option->requires_details) {
                 $hasDetail = false;
                 foreach ($detailKeys as $key) {
-                    if (!empty($input[$key]) && trim((string) $input[$key]) !== '') {
+                    if (! empty($input[$key]) && trim((string) $input[$key]) !== '') {
                         $hasDetail = true;
                         break;
                     }
                 }
 
-                if (!$hasDetail) {
+                if (! $hasDetail) {
                     $primaryKey = $detailKeys[0];
                     $v->errors()->add(
                         $primaryKey,

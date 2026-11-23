@@ -12,20 +12,20 @@ use App\Models\Intervention;
 use App\Models\PortalAccount;
 use App\Models\PortalRequest;
 use App\Models\Product;
+use App\Models\ProductResource;
 use App\Models\Prospect;
+use App\Models\Trial;
 use App\Rules\ValidWilaya;
+use App\Services\AppointmentService;
 use App\Services\BillingService;
 use App\Services\PortalProfileService;
-use App\Support\Wilayas;
-use Illuminate\Support\Facades\DB;
-use App\Models\ProductResource;
-use App\Models\Trial;
-use App\Services\AppointmentService;
 use App\Services\PortalRequestService;
 use App\Services\SchedulingService;
+use App\Support\Wilayas;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /** Customer-scoped reads and requests. Every query is filtered by the signed-in account / its prospect. */
 class PortalController extends Controller

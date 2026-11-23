@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\AppointmentKind;
+use App\Models\Appointment;
 use App\Models\AppointmentType;
+use App\Models\Prospect;
 use Tests\Concerns\CreatesPortalFixtures;
 use Tests\TestCase;
 
@@ -51,8 +53,8 @@ class FixedAppointmentTypesTest extends TestCase
     public function test_migration_folds_custom_types_into_the_fixed_ones(): void
     {
         $custom = AppointmentType::query()->create(['code' => 'webinar', 'name' => 'Webinar', 'group' => 'training']);
-        $prospect = \App\Models\Prospect::factory()->inStage($this->demoStage)->create();
-        $appointment = \App\Models\Appointment::query()->create([
+        $prospect = Prospect::factory()->inStage($this->demoStage)->create();
+        $appointment = Appointment::query()->create([
             'appointment_type_id' => $custom->id, 'prospect_id' => $prospect->id, 'starts_at' => now()->addDay(), 'ends_at' => now()->addDay()->addHour(), 'status' => 'confirmed',
         ]);
 

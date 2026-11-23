@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ActivityType;
+use App\Enums\AppointmentKind;
 use App\Enums\FollowUpActivityType;
 use App\Enums\FollowUpStatus;
 use App\Enums\StageType;
@@ -14,7 +15,6 @@ use App\Http\Resources\Api\V1\ProductResource;
 use App\Http\Resources\Api\V1\ProspectFormOptionResource;
 use App\Http\Resources\Api\V1\SalesStageResource;
 use App\Http\Responses\ApiResponse;
-use App\Enums\AppointmentKind;
 use App\Models\AppointmentType;
 use App\Models\EmployeeSession;
 use App\Models\InterventionPriority;
@@ -26,6 +26,7 @@ use App\Models\Product;
 use App\Models\ProspectFormOption;
 use App\Models\SalesStage;
 use App\Services\SchedulingService;
+use App\Support\Wilayas;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -84,7 +85,7 @@ class SystemController extends Controller
             'products' => $resolve(Product::query()->with('pack')->orderBy('name')->orderBy('id')->get(), ProductResource::class),
             'packs' => Pack::query()->orderBy('name')->get(['id', 'name', 'code'])->map->only(['id', 'name', 'code'])->all(),
             'appointment_kinds' => AppointmentKind::values(),
-            'wilayas' => \App\Support\Wilayas::all(),
+            'wilayas' => Wilayas::all(),
             'appointment_types' => AppointmentType::query()->orderBy('sort_order')->get()->map(fn ($m) => (new ConfigEntityResource($m))->resolve())->all(),
             'intervention_types' => InterventionType::query()->orderBy('sort_order')->get()->map(fn ($m) => (new ConfigEntityResource($m))->resolve())->all(),
             'intervention_statuses' => InterventionStatus::query()->orderBy('sort_order')->get()->map(fn ($m) => (new ConfigEntityResource($m))->resolve())->all(),

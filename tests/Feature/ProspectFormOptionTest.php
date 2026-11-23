@@ -31,8 +31,8 @@ class ProspectFormOptionTest extends TestCase
             'name' => 'Automotive',
             'requires_details' => false,
         ])->assertOk()
-          ->assertJsonPath('data.name', 'Automotive')
-          ->assertJsonPath('data.requires_details', false);
+            ->assertJsonPath('data.name', 'Automotive')
+            ->assertJsonPath('data.requires_details', false);
 
         $this->getJson(self::API.'/prospect-form-options?type=profession')
             ->assertOk()
@@ -104,7 +104,7 @@ class ProspectFormOptionTest extends TestCase
             'name' => 'Client Without Details',
             'source' => 'Facebook',
         ])->assertStatus(422)
-          ->assertJsonValidationErrors(['source_details']);
+            ->assertJsonValidationErrors(['source_details']);
 
         // With source_details succeeds
         $res = $this->postJson(self::API.'/prospects', [

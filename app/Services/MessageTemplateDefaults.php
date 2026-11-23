@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AppointmentKind;
 use App\Models\MessageTemplate;
 
 /** Installs and audits the message templates every appointment kind needs. */
@@ -23,7 +24,7 @@ class MessageTemplateDefaults
     /** One template per code and language is required: the four appointment kinds plus first/follow-up training. */
     public static function requiredCodes(): array
     {
-        return [...array_map(fn ($kind) => 'appointment_'.$kind, \App\Enums\AppointmentKind::values()), 'training_first', 'training_review'];
+        return [...array_map(fn ($kind) => 'appointment_'.$kind, AppointmentKind::values()), 'training_first', 'training_review'];
     }
 
     /** @return array{languages: list<string>, required: list<string>, missing: list<array{code: string, language: string, reason: string}>, placeholders: list<string>} */

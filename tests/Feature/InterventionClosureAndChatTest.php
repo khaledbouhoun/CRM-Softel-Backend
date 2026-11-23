@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Intervention;
+use App\Models\InterventionAttachment;
 use App\Models\InterventionStatus;
 use App\Models\InterventionType;
+use App\Models\PortalAccount;
 use App\Models\Product;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -134,7 +136,7 @@ class InterventionClosureAndChatTest extends TestCase
     public function test_customer_avatar_is_part_of_the_sender(): void
     {
         $this->staffMove('under_review')->assertOk();
-        \App\Models\PortalAccount::query()->update(['avatar_url' => 'https://img.example.test/me.png']);
+        PortalAccount::query()->update(['avatar_url' => 'https://img.example.test/me.png']);
         $this->postJson(self::PORTAL."/interventions/{$this->id}/messages", ['body' => 'Hi'], $this->headers)->assertOk();
 
         $client = collect($this->getJson(self::API."/interventions/{$this->id}")->json('data.messages'))->firstWhere('sender.role', 'client');
@@ -160,7 +162,7 @@ class InterventionClosureAndChatTest extends TestCase
         $this->assertCount(5, $message['attachments']);
         $this->assertSame('employee', $message['attachments'][0]['uploaded_by']);
         foreach ($message['attachments'] as $file) {
-            Storage::disk('local')->assertExists(\App\Models\InterventionAttachment::find($file['id'])->path);
+            Storage::disk('local')->assertExists(InterventionAttachment::find($file['id'])->path);
         }
 
         $rar = $this->staffReply(['visibility' => 'customer', 'files' => [UploadedFile::fake()->create('tools.rar', 100, 'application/vnd.rar')]])->assertCreated();
@@ -191,7 +193,7 @@ class InterventionClosureAndChatTest extends TestCase
         $this->assertStringContainsString('attachment', $this->get($attachments[0]['download_url'], $this->headers)->assertOk()->headers->get('content-disposition'));
         $this->assertStringContainsString('attachment', $this->get(str_replace('/attachments/'.$attachments[1]['id'], '/attachments/'.$attachments[1]['id'].'/preview', $attachments[1]['download_url']), $this->headers)->assertOk()->headers->get('content-disposition'));
 
-        $secret = \App\Models\InterventionAttachment::where('original_name', 'secret.pdf')->first();
+        $secret = InterventionAttachment::where('original_name', 'secret.pdf')->first();
         $this->get(self::PORTAL."/interventions/{$this->id}/attachments/{$secret->id}", $this->headers)->assertStatus(404);
         $this->get(self::API."/interventions/{$this->id}/attachments/{$secret->id}")->assertOk();   // staff may download internal files
     }
@@ -199,7 +201,7 @@ class InterventionClosureAndChatTest extends TestCase
     public function test_attachments_of_another_customer_stay_unreachable(): void
     {
         $this->staffReply(['visibility' => 'customer', 'body' => 'x', 'files' => [UploadedFile::fake()->create('doc.pdf', 10, 'application/pdf')]])->assertCreated();
-        $file = \App\Models\InterventionAttachment::first();
+        $file = InterventionAttachment::first();
         [, , $other] = $this->customerWith(Product::factory()->create(), 'other@example.test');
 
         $this->get(self::PORTAL."/interventions/{$this->id}/attachments/{$file->id}", $other)->assertStatus(404);

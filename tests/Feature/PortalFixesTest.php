@@ -6,6 +6,7 @@ use App\Models\InterventionAttachment;
 use App\Models\InterventionType;
 use App\Models\Pack;
 use App\Models\Product;
+use App\Models\Subscription;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesPortalFixtures;
@@ -116,7 +117,7 @@ class PortalFixesTest extends TestCase
         $this->post(self::API."/interventions/{$id}/messages", ['visibility' => 'customer', 'body' => 'Patch', 'is_hotfix' => '1', 'files' => [UploadedFile::fake()->create('p.zip', 10, 'application/zip')]], ['Accept' => 'application/json'])->assertCreated();
         $fileId = InterventionAttachment::first()->id;
 
-        \App\Models\Subscription::query()->create(['prospect_id' => $prospect->id, 'type' => 'maintenance', 'status' => 'expired', 'starts_at' => '2025-01-01', 'expires_at' => '2025-12-31']);
+        Subscription::query()->create(['prospect_id' => $prospect->id, 'type' => 'maintenance', 'status' => 'expired', 'starts_at' => '2025-01-01', 'expires_at' => '2025-12-31']);
 
         $this->getJson(self::PORTAL."/interventions/{$id}/attachments/{$fileId}", $headers)->assertStatus(403)->assertJsonPath('error_code', 'MAINTENANCE_REQUIRED');
     }

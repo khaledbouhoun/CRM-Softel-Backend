@@ -8,7 +8,6 @@ use App\Models\InterventionPriority;
 use App\Models\InterventionStatus;
 use App\Models\InterventionStatusTransition;
 use App\Models\InterventionType;
-use App\Models\MessageTemplate;
 use App\Models\Product;
 use App\Models\ProductResource;
 use App\Services\MessageTemplateDefaults;

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -33,7 +34,7 @@ return new class extends Migration
     {
         // Unlinked activities cannot satisfy NOT NULL again; keep them attached
         // to nothing rather than deleting history, so only refuse when present.
-        if (\Illuminate\Support\Facades\DB::table('activities')->whereNull('prospect_id')->exists()) {
+        if (DB::table('activities')->whereNull('prospect_id')->exists()) {
             throw new RuntimeException('Cannot roll back: unlinked activities exist. Link them to a prospect first.');
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Portal;
 
+use App\Exceptions\BusinessRuleException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\PortalAttachmentRequest;
 use App\Http\Requests\Api\V1\PortalInterventionRequest;
@@ -22,7 +23,6 @@ use App\Services\InterventionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** Interventions the signed-in customer's company raised itself (source = customer). */
@@ -116,7 +116,7 @@ class PortalInterventionController extends Controller
 
         $plan = $this->billing->maintenance((int) $this->account($request)->prospect_id);
         if ($plan && ! $plan->isActive()) {
-            throw new \App\Exceptions\BusinessRuleException('Renew your maintenance plan to download this hotfix.', 'MAINTENANCE_REQUIRED', [], 403);
+            throw new BusinessRuleException('Renew your maintenance plan to download this hotfix.', 'MAINTENANCE_REQUIRED', [], 403);
         }
     }
 

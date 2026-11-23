@@ -8,7 +8,9 @@ use App\Models\ProductRelease;
 use App\Models\Prospect;
 use App\Models\RenewalRequest;
 use App\Models\Subscription;
+use App\Services\BillingService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesPortalFixtures;
 use Tests\TestCase;
@@ -81,12 +83,12 @@ class BillingTest extends TestCase
 
     public function test_free_maintenance_ends_on_december_31st_with_the_april_first_cutoff(): void
     {
-        $svc = app(\App\Services\BillingService::class);
+        $svc = app(BillingService::class);
 
-        $this->assertSame('2026-12-31', $svc->calculateFirstFreeExpiry(\Illuminate\Support\Carbon::parse('2026-02-15'))->toDateString());
-        $this->assertSame('2026-12-31', $svc->calculateFirstFreeExpiry(\Illuminate\Support\Carbon::parse('2026-03-31 23:59:00'))->toDateString());
-        $this->assertSame('2027-12-31', $svc->calculateFirstFreeExpiry(\Illuminate\Support\Carbon::parse('2026-04-01'))->toDateString());
-        $this->assertSame('2027-12-31', $svc->calculateFirstFreeExpiry(\Illuminate\Support\Carbon::parse('2026-07-05'))->toDateString());
+        $this->assertSame('2026-12-31', $svc->calculateFirstFreeExpiry(Carbon::parse('2026-02-15'))->toDateString());
+        $this->assertSame('2026-12-31', $svc->calculateFirstFreeExpiry(Carbon::parse('2026-03-31 23:59:00'))->toDateString());
+        $this->assertSame('2027-12-31', $svc->calculateFirstFreeExpiry(Carbon::parse('2026-04-01'))->toDateString());
+        $this->assertSame('2027-12-31', $svc->calculateFirstFreeExpiry(Carbon::parse('2026-07-05'))->toDateString());
     }
 
     public function test_converting_a_prospect_starts_the_free_maintenance_period(): void

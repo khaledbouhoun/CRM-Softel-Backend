@@ -74,7 +74,7 @@ class ProspectFormOption extends Model
         return Prospect::withTrashed()
             ->where(function (Builder $q) use ($column, $val, $lowerVal) {
                 $q->where($column, $val)
-                  ->orWhere($column, $lowerVal);
+                    ->orWhere($column, $lowerVal);
             })
             ->exists();
     }

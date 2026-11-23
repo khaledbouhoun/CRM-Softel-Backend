@@ -7,11 +7,11 @@ use App\Models\Intervention;
 use App\Models\PortalAccount;
 use App\Models\PortalRequest;
 use App\Models\Product;
-use Illuminate\Support\Facades\Storage;
 use App\Models\ProductResource;
 use App\Models\Trial;
 use App\Support\Wilayas;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * The ONLY place that shapes data for customers. Every field is whitelisted, so

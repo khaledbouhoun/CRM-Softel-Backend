@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Activity;
 use App\Models\FollowUpTask;
 use App\Models\Prospect;
-use App\Models\ProspectFormOption;
 use Tests\TestCase;
 
 class ActivityFollowUpLinkingTest extends TestCase
@@ -66,7 +65,7 @@ class ActivityFollowUpLinkingTest extends TestCase
         $this->postJson(self::API."/activities/{$activity->id}/link-follow-up", [
             'follow_up_id' => $task->id,
         ])->assertStatus(422)
-          ->assertJsonValidationErrors(['follow_up_id']);
+            ->assertJsonValidationErrors(['follow_up_id']);
     }
 
     public function test_an_activity_already_linked_to_a_follow_up_cannot_be_relinked(): void
@@ -92,7 +91,7 @@ class ActivityFollowUpLinkingTest extends TestCase
         $this->postJson(self::API."/activities/{$activity->id}/link-follow-up", [
             'follow_up_id' => $task2->id,
         ])->assertStatus(422)
-          ->assertJsonPath('error_code', 'ACTIVITY_LINK_LOCKED');
+            ->assertJsonPath('error_code', 'ACTIVITY_LINK_LOCKED');
     }
 
     public function test_cannot_change_prospect_association_when_prospect_has_activities_or_follow_ups(): void
@@ -113,6 +112,6 @@ class ActivityFollowUpLinkingTest extends TestCase
             'prospect_id' => $otherProspect->id,
             'confirm_relink' => true,
         ])->assertStatus(422)
-          ->assertJsonPath('error_code', 'ACTIVITY_LINK_LOCKED');
+            ->assertJsonPath('error_code', 'ACTIVITY_LINK_LOCKED');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Casts\LocalDateTime;
 use App\Enums\StageType;
 use App\Models\Appointment;
+use App\Models\EmployeeSession;
 use App\Models\Intervention;
 use App\Models\LossReason;
 use App\Models\Prospect;
@@ -314,9 +315,10 @@ class AnalyticsService
     private function team(?Carbon $start, ?Carbon $end): array
     {
         $board = [];
-        $aliases = \App\Models\EmployeeSession::query()->get(['username', 'custom_name', 'employee_id'])
+        $aliases = EmployeeSession::query()->get(['username', 'custom_name', 'employee_id'])
             ->flatMap(function ($s) {
                 $display = $s->custom_name ?: $s->username;
+
                 return [
                     $s->username => $display,
                     $s->employee_id => $display,
