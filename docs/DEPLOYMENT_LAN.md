@@ -159,7 +159,32 @@ Expected health response: `success: true`, `data.status: ok`, `data.database: ok
 | `500 SERVER_ERROR` | read `storage/logs/laravel-YYYY-MM-DD.log` on the server |
 | health shows `database: unavailable` (503) | MySQL service stopped or wrong `DB_*` values |
 
-## 7. Flutter client configuration
+## 7. Scheduled commands
+
+Two commands must run on a schedule (`routes/console.php`):
+
+| Command | Frequency | Effect |
+|---|---|---|
+| `crm:release-expired-holds` | every minute | frees appointment slots whose hold has expired |
+| `billing:sync-subscriptions` | daily at 00:10 | flags maintenance subscriptions past their expiry date |
+
+Laravel runs both from a single entry point, `php artisan schedule:run`, which must
+be called every minute. Administrator PowerShell (adjust the PHP and project paths):
+
+```powershell
+$project = "D:\SOFTEL CRM\Laravel Backend"
+$php     = "C:\php\php.exe"
+$action  = New-ScheduledTaskAction -Execute $php -Argument "artisan schedule:run" -WorkingDirectory $project
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
+  -RepetitionInterval (New-TimeSpan -Minutes 1) -RepetitionDuration ([TimeSpan]::MaxValue)
+Register-ScheduledTask -TaskName "SOFTEL CRM scheduler" -Action $action -Trigger $trigger `
+  -User "SYSTEM" -RunLevel Highest -Description "Laravel scheduler (php artisan schedule:run)"
+```
+
+Check with `php artisan schedule:list`. If the server is off at 00:10, the daily sync
+runs the next night; run `php artisan billing:sync-subscriptions` by hand if needed.
+
+## 8. Flutter client configuration
 
 The Flutter app only needs the base URL, e.g. `http://192.168.1.10:8000/api/v1`.
 Make it configurable in the app settings (not hard-coded) so a server change
