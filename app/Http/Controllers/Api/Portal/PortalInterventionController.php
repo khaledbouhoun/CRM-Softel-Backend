@@ -11,14 +11,17 @@ use App\Http\Resources\Api\V1\PortalPresenter;
 use App\Http\Responses\ApiResponse;
 use App\Models\Intervention;
 use App\Models\InterventionAttachment;
+use App\Models\InterventionMessage;
 use App\Models\InterventionStatus;
 use App\Models\InterventionStatusTransition;
 use App\Models\InterventionType;
 use App\Models\PortalAccount;
 use App\Services\AttachmentResponder;
+use App\Services\BillingService;
 use App\Services\InterventionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -27,7 +30,7 @@ class PortalInterventionController extends Controller
 {
     private const WITH = ['type', 'status', 'product', 'messages.status', 'messages.fromStatus', 'messages.account', 'messages.attachments', 'attachments'];
 
-    public function __construct(private readonly InterventionService $interventions) {}
+    public function __construct(private readonly InterventionService $interventions, private readonly BillingService $billing) {}
 
     private function account(Request $request): PortalAccount
     {
@@ -71,7 +74,7 @@ class PortalInterventionController extends Controller
     public function message(PortalMessageRequest $request, int $id): JsonResponse
     {
         $intervention = $this->own($request, $id);
-        $this->interventions->addMessage($intervention, 'customer', $this->account($request)->name, 'customer', $request->validated('body'), [], $this->account($request)->id);
+        $this->interventions->addMessage($intervention, 'customer', $this->account($request)->name, 'customer', (string) $request->validated('body'), array_filter([$request->file('file')]), $this->account($request)->id);
 
         return ApiResponse::success(PortalPresenter::intervention($this->own($request, $id), true), 'Message sent.');
     }
@@ -89,9 +92,32 @@ class PortalInterventionController extends Controller
     {
         $intervention = $this->own($request, $id);
         $this->interventions->assertAcceptsReplies($intervention, 'customer');
-        $this->interventions->storeAttachment($intervention, $request->file('file'), 'customer', 'customer', $this->account($request)->name);
+        $account = $this->account($request);
+
+        // The file is posted as a customer message so it shows up inside the conversation (staff chat included), and
+        // stays listed with the request's files. Unlike a text reply this does not move the request to another status.
+        DB::transaction(function () use ($request, $intervention, $account): void {
+            $message = InterventionMessage::query()->create([
+                'intervention_id' => $intervention->id, 'author_type' => 'customer', 'author_name' => $account->name,
+                'portal_account_id' => $account->id, 'visibility' => 'customer', 'body' => '',
+            ]);
+            $this->interventions->storeAttachment($intervention, $request->file('file'), 'customer', 'customer', $account->name, $message->id);
+        });
 
         return ApiResponse::created(PortalPresenter::intervention($this->own($request, $id), true), 'File uploaded.');
+    }
+
+    /** Private hotfix patches are part of the maintenance plan: an expired plan no longer unlocks them. */
+    private function assertHotfixAllowed(Request $request, InterventionAttachment $attachment): void
+    {
+        if (! $attachment->is_hotfix) {
+            return;
+        }
+
+        $plan = $this->billing->maintenance((int) $this->account($request)->prospect_id);
+        if ($plan && ! $plan->isActive()) {
+            throw new \App\Exceptions\BusinessRuleException('Renew your maintenance plan to download this hotfix.', 'MAINTENANCE_REQUIRED', [], 403);
+        }
     }
 
     public function download(Request $request, int $id, int $attachmentId): StreamedResponse
@@ -99,6 +125,7 @@ class PortalInterventionController extends Controller
         $intervention = $this->own($request, $id);
         $attachment = $intervention->attachments->where('visibility', 'customer')->firstWhere('id', $attachmentId);
         abort_if($attachment === null, 404);
+        $this->assertHotfixAllowed($request, $attachment);
 
         return AttachmentResponder::download($attachment, $this->interventions->disk());
     }
@@ -109,6 +136,7 @@ class PortalInterventionController extends Controller
         $intervention = $this->own($request, $id);
         $attachment = $intervention->attachments->where('visibility', 'customer')->firstWhere('id', $attachmentId);
         abort_if($attachment === null, 404);
+        $this->assertHotfixAllowed($request, $attachment);
 
         return AttachmentResponder::preview($attachment, $this->interventions->disk());
     }

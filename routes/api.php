@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\ActivityController;
 use App\Http\Controllers\Api\V1\AppointmentController;
+use App\Http\Controllers\Api\V1\BillingStaffController;
 use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\ConfigEntityController;
 use App\Http\Controllers\Api\V1\CustomerController;
@@ -70,6 +71,7 @@ Route::prefix('v1')
 
         // Configuration
         Route::post('products/upload-demo', [ProductController::class, 'uploadDemo'])->name('products.upload-demo');
+        Route::post('products/upload-image', [ProductController::class, 'uploadImage'])->name('products.upload-image');
         Route::apiResource('products', ProductController::class);
         Route::apiResource('packs', PackController::class);
 
@@ -132,6 +134,20 @@ Route::prefix('v1')
         Route::post('product-releases/{release}/installer', [ProductReleaseController::class, 'uploadInstaller'])->name('product-releases.installer.store');
         Route::delete('product-releases/{release}/installer', [ProductReleaseController::class, 'removeInstaller'])->name('product-releases.installer.destroy');
         Route::get('product-releases/{release}/download', [ProductReleaseController::class, 'download'])->name('product-releases.download');
+
+        // Billing (cash only): maintenance status, pending renewals, invoices and scanned receipts
+        Route::prefix('billing')->name('billing.')->group(function () {
+            Route::get('subscriptions', [BillingStaffController::class, 'subscriptions'])->name('subscriptions');
+            Route::get('customers/{prospect}', [BillingStaffController::class, 'show'])->name('customers.show');
+            Route::put('customers/{prospect}/maintenance', [BillingStaffController::class, 'setMaintenance'])->name('customers.maintenance');
+            Route::post('customers/{prospect}/invoices', [BillingStaffController::class, 'storeInvoice'])->name('customers.invoices.store');
+            Route::post('renewal-requests/{renewalRequest}/quote', [BillingStaffController::class, 'quoteRenewal'])->name('renewal-requests.quote');
+            Route::post('renewal-requests/{renewalRequest}/mark-paid', [BillingStaffController::class, 'markRenewalPaid'])->name('renewal-requests.mark-paid');
+            Route::post('invoices/{invoice}/mark-paid', [BillingStaffController::class, 'markInvoicePaid'])->name('invoices.mark-paid');
+            Route::post('invoices/{invoice}/receipt', [BillingStaffController::class, 'uploadReceipt'])->name('invoices.receipt.store');
+            Route::get('invoices/{invoice}/receipt', [BillingStaffController::class, 'showReceipt'])->name('invoices.receipt.show');
+            Route::delete('invoices/{invoice}/receipt', [BillingStaffController::class, 'removeReceipt'])->name('invoices.receipt.destroy');
+        });
 
         // Scheduling and workflow configuration
         Route::get('settings/scheduling', [SchedulingSettingsController::class, 'show'])->name('settings.scheduling.show');

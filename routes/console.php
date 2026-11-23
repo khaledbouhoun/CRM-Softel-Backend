@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('crm:release-expired-holds')->everyMinute();
+Schedule::command('billing:sync-subscriptions')->dailyAt('00:10');

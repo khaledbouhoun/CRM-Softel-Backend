@@ -91,7 +91,7 @@ class InterventionStaffController extends Controller
     {
         $this->interventions->addMessage(
             $intervention, 'employee', $this->actor($request), $request->validated('visibility'),
-            (string) $request->validated('body', ''), $request->file('files', []),
+            (string) $request->validated('body', ''), $request->file('files', []), null, $request->boolean('is_hotfix'),
         );
 
         return ApiResponse::created($this->detail($intervention), 'Message added.');

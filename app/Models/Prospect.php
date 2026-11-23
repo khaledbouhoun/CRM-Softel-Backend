@@ -70,6 +70,21 @@ class Prospect extends Model
         return $this->converted_at !== null;
     }
 
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function renewalRequests(): HasMany
+    {
+        return $this->hasMany(RenewalRequest::class);
+    }
+
     public function portalAccounts(): HasMany
     {
         return $this->hasMany(PortalAccount::class);

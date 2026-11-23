@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
  */
 class ProspectConversionService
 {
-    public function __construct(private readonly StageTransitionService $transitions) {}
+    public function __construct(private readonly StageTransitionService $transitions, private readonly BillingService $billing) {}
 
     /**
      * @param  list<int>  $purchasedProductIds  products bought (must be linked or active)
@@ -47,6 +47,9 @@ class ProspectConversionService
             $this->moveToWonStage($locked, $wonStageId);
 
             $locked->forceFill(['converted_at' => now(), 'converted_by' => $by, 'conversion_note' => $note])->save();
+
+            // The license comes with free maintenance up to a December 31st (see BillingService::calculateFirstFreeExpiry).
+            $this->billing->startFreeMaintenance($locked, now());
 
             return $locked->load(Prospect::defaultRelations());
         });

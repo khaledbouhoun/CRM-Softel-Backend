@@ -10,6 +10,8 @@ class InterventionMessageRequest extends ApiFormRequest
         return [
             'visibility' => ['required', 'in:customer,internal'],
             'body' => ['required_without:files', 'nullable', 'string', 'max:10000'],
+            // Marks the attached files as a private hotfix / patch for this customer (customer-visible replies only).
+            'is_hotfix' => ['sometimes', 'boolean'],
             'files' => ['sometimes', 'array', 'max:'.config('crm.uploads.max_files_per_reply')],
             'files.*' => [
                 'file', 'max:'.config('crm.uploads.staff_attachment_max_kb'),

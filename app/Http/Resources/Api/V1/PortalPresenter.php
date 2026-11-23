@@ -45,6 +45,8 @@ final class PortalPresenter
     /** @return array<string, mixed> */
     public static function product(Product $p): array
     {
+        $p->loadMissing('pack');
+
         return [
             'id' => $p->id, 'name' => $p->name, 'slug' => $p->slug, 'description' => $p->description,
             'full_description' => $p->full_description, 'image_url' => $p->image_path ? Storage::url($p->image_path) : null,

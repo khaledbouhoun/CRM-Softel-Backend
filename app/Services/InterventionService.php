@@ -118,11 +118,11 @@ class InterventionService
      * @param  'customer'|'internal'  $visibility
      * @param  list<UploadedFile>  $files  stored privately and linked to the reply
      */
-    public function addMessage(Intervention $intervention, string $authorType, ?string $authorName, string $visibility, string $body, array $files = [], ?int $accountId = null): InterventionMessage
+    public function addMessage(Intervention $intervention, string $authorType, ?string $authorName, string $visibility, string $body, array $files = [], ?int $accountId = null, bool $hotfix = false): InterventionMessage
     {
         $this->assertAcceptsReplies($intervention, $authorType, $visibility);
 
-        return DB::transaction(function () use ($intervention, $authorType, $authorName, $visibility, $body, $files, $accountId) {
+        return DB::transaction(function () use ($intervention, $authorType, $authorName, $visibility, $body, $files, $accountId, $hotfix) {
             $message = InterventionMessage::query()->create([
                 'intervention_id' => $intervention->id, 'author_type' => $authorType, 'author_name' => $authorName,
                 'portal_account_id' => $authorType === 'customer' ? $accountId : null,
@@ -130,7 +130,7 @@ class InterventionService
             ]);
 
             foreach ($files as $file) {
-                $this->storeAttachment($intervention, $file, $visibility, $authorType, $authorName, $message->id);
+                $this->storeAttachment($intervention, $file, $visibility, $authorType, $authorName, $message->id, $hotfix && $visibility === 'customer');
             }
 
             // A customer answering a request for information moves it on through the configured customer transition.
@@ -150,12 +150,12 @@ class InterventionService
     }
 
     /** Stores one uploaded file on the configured private disk and records it. */
-    public function storeAttachment(Intervention $intervention, UploadedFile $file, string $visibility, string $uploaderType, ?string $uploaderName, ?int $messageId = null): InterventionAttachment
+    public function storeAttachment(Intervention $intervention, UploadedFile $file, string $visibility, string $uploaderType, ?string $uploaderName, ?int $messageId = null, bool $hotfix = false): InterventionAttachment
     {
         $path = $file->store('intervention-attachments/'.$intervention->id, ['disk' => $this->disk()]);
 
         return InterventionAttachment::query()->create([
-            'intervention_id' => $intervention->id, 'message_id' => $messageId, 'visibility' => $visibility,
+            'intervention_id' => $intervention->id, 'message_id' => $messageId, 'visibility' => $visibility, 'is_hotfix' => $hotfix,
             'uploaded_by_type' => $uploaderType, 'uploaded_by_name' => $uploaderName, 'path' => $path,
             'original_name' => mb_substr($file->getClientOriginalName(), 0, 255),
             'mime' => (string) $file->getMimeType(), 'size' => (int) $file->getSize(),

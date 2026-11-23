@@ -86,6 +86,16 @@ return [
         ],
     ],
 
+    'intervention_transitions' => [
+        'title' => 'Status transitions',
+        'help' => 'Which status may follow which. A status with no outgoing transition is a dead end, so keep at least one way out of every open status.',
+        'fields' => [
+            'from_status_id' => ['label' => 'From status', 'help' => 'Status the intervention is in before the change.', 'example' => 'New'],
+            'to_status_id' => ['label' => 'To status', 'help' => 'Status the intervention moves to.', 'example' => 'In progress'],
+            'customer_allowed' => ['label' => 'Allowed for customers', 'help' => 'If on, the customer may trigger this transition from the portal (for example reopening).', 'example' => 'Off for Resolved to In progress'],
+        ],
+    ],
+
     'intervention_priorities' => [
         'title' => 'Priorities',
         'help' => 'Urgency levels with a response target.',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\PortalSubmitRequest;
+use App\Http\Resources\Api\V1\BillingPresenter;
 use App\Http\Resources\Api\V1\PortalPresenter;
 use App\Http\Responses\ApiResponse;
 use App\Models\Appointment;
@@ -13,6 +14,7 @@ use App\Models\PortalRequest;
 use App\Models\Product;
 use App\Models\Prospect;
 use App\Rules\ValidWilaya;
+use App\Services\BillingService;
 use App\Services\PortalProfileService;
 use App\Support\Wilayas;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +35,7 @@ class PortalController extends Controller
         private readonly AppointmentService $appointments,
         private readonly SchedulingService $scheduling,
         private readonly PortalProfileService $profile,
+        private readonly BillingService $billing,
     ) {}
 
     private function account(Request $request): PortalAccount
@@ -174,6 +177,11 @@ class PortalController extends Controller
             'upcoming_appointments' => $upcoming->map(fn ($a) => PortalPresenter::appointment($a))->all(),
             'active_trials' => $this->trialsFor($account)->activeNow()->get()->map(fn ($t) => PortalPresenter::trial($t))->all(),
             'products_count' => count($this->ownedProductIds($account)),
+            'open_interventions_count' => $this->customerInterventions($account)->whereHas('status', fn ($q) => $q->where('is_closed', false))->count(),
+            'awaiting_customer_count' => $this->customerInterventions($account)->whereHas('status', fn ($q) => $q->where('awaits_customer', true)->where('is_closed', false))->count(),
+            'upcoming_appointments_count' => $this->appointmentsFor($account)->whereIn('status', Appointment::BLOCKING)->where('starts_at', '>=', now()->format('Y-m-d H:i:s'))->count(),
+            // Customers only; null for accounts that are not customers yet. Status "none" = no maintenance plan set up.
+            'maintenance' => $account->prospect?->converted_at ? BillingPresenter::maintenance($this->billing->maintenance((int) $account->prospect_id)) : null,
         ], 'Overview retrieved successfully.');
     }
 
@@ -272,6 +280,11 @@ class PortalController extends Controller
         return $this->appointmentsFor($this->account($request))->findOrFail($id);
     }
 
+    private function customerInterventions(PortalAccount $account)
+    {
+        return Intervention::query()->where('source', 'customer')->where('prospect_id', $account->prospect_id ?? 0);
+    }
+
     private function appointmentsFor(PortalAccount $account)
     {
         return Appointment::query()->with(['type', 'product'])->where('prospect_id', $account->prospect_id ?? 0);
@@ -294,7 +307,7 @@ class PortalController extends Controller
     public function ownedProducts(Request $request): JsonResponse
     {
         $ids = $this->ownedProductIds($this->account($request));
-        $items = Product::query()->whereIn('id', $ids)->orderBy('name')->get();
+        $items = Product::query()->with('pack')->whereIn('id', $ids)->orderBy('name')->get();
 
         return ApiResponse::success($items->map(fn ($p) => PortalPresenter::product($p))->all(), 'Products retrieved successfully.', 200, ['total' => $items->count()]);
     }

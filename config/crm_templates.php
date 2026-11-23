@@ -29,7 +29,7 @@ return [
 
         ['appointment_meeting', 'fr', 'Bonjour {client_name}, votre rendez-vous avec SOFTEL est confirmé le {date} à {time}. Lien : {link}'],
         ['appointment_meeting', 'en', 'Hello {client_name}, your meeting with SOFTEL is confirmed on {date} at {time}. Link: {link}'],
-        ['appointment_meeting', 'ar', 'مرحبا {client_name}، تم تأكيد اجتماعكم مع سوفتل بتاريخ {date} على الساعة {time}. الرابط: {link}'],
+        ['appointment_meeting', 'ar', 'مرحبا {client_name}، تم تأكيد اجتماعكم مع Softel بتاريخ {date} على الساعة {time}. الرابط: {link}'],
 
         ['appointment_training', 'fr', 'Bonjour {client_name}, votre formation {product_name} est prévue le {date} de {time} à {end}. Support : {link}'],
         ['appointment_training', 'en', 'Hello {client_name}, your {product_name} training is on {date} from {time} to {end}. Material: {link}'],

@@ -52,7 +52,7 @@ class ChatPresenter
     {
         $out = [
             'id' => $a->id, 'message_id' => $a->message_id, 'name' => $a->original_name, 'mime' => $a->mime, 'size' => $a->size,
-            'uploaded_by' => $a->uploaded_by_type, 'is_previewable' => $a->isPreviewable(),
+            'uploaded_by' => $a->uploaded_by_type, 'is_hotfix' => (bool) $a->is_hotfix, 'is_previewable' => $a->isPreviewable(),
             'download_url' => route($routes['download'], $params + ['attachmentId' => $a->id], false),
             'preview_url' => $a->isPreviewable() ? route($routes['preview'], $params + ['attachmentId' => $a->id], false) : null,
         ];

@@ -75,6 +75,14 @@ return [
     | allow-list: it is called server-to-server by the public website with the
     | shared service key, and by customer bearer tokens issued by this API.
     */
+    /*
+    | Cash-only billing (maintenance & support renewals). Prices are whole Algerian dinars.
+    */
+    'billing' => [
+        'receipt_max_kb' => (int) env('CRM_RECEIPT_MAX_KB', 10240),
+        'receipt_extensions' => ['pdf', 'jpg', 'jpeg', 'png'],
+    ],
+
     'portal' => [
         'service_key' => env('CRM_PORTAL_SERVICE_KEY'),
         /* Optional extra IP/CIDR allow-list for the website server. Empty = key only. */

@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\Portal\PortalAuthController;
+use App\Http\Controllers\Api\Portal\PortalBillingController;
 use App\Http\Controllers\Api\Portal\PortalController;
 use App\Http\Controllers\Api\Portal\PortalInterventionController;
 use App\Http\Controllers\Api\Portal\PortalReleaseController;
+use App\Http\Controllers\Api\PublicApi\PublicProductController;
 use App\Http\Middleware\AuthenticatePortalAccount;
 use App\Http\Middleware\PortalServiceKey;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +16,16 @@ use Illuminate\Support\Facades\Route;
 |  - Everything except sign-in/up and the public catalogue also requires the customer's bearer token.
 | It is intentionally separate from the LAN-only staff API in routes/api.php.
 */
+/*
+| Public marketing catalogue: /api/public/v1. No authentication (cacheable), read-only.
+*/
+Route::prefix('api/public/v1')->name('public.')
+    ->middleware(['api', 'throttle:portal-api'])
+    ->group(function () {
+        Route::get('products', [PublicProductController::class, 'index'])->name('products.index');
+        Route::get('products/{slug}', [PublicProductController::class, 'show'])->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')->name('products.show');
+    });
+
 Route::prefix('api/portal/v1')->name('portal.')
     ->middleware(['api', PortalServiceKey::class, 'throttle:portal-api'])
     ->group(function () {
@@ -55,6 +67,10 @@ Route::prefix('api/portal/v1')->name('portal.')
             Route::get('releases', [PortalReleaseController::class, 'index'])->name('releases.index');
             Route::get('releases/{id}', [PortalReleaseController::class, 'show'])->whereNumber('id')->name('releases.show');
             Route::get('releases/{id}/download', [PortalReleaseController::class, 'download'])->whereNumber('id')->name('releases.download');
+
+            Route::get('billing', [PortalBillingController::class, 'index'])->name('billing');
+            Route::post('billing/renew', [PortalBillingController::class, 'renew'])->name('billing.renew');
+            Route::get('billing/invoices/{id}', [PortalBillingController::class, 'invoice'])->whereNumber('id')->name('billing.invoices.download');
 
             Route::get('interventions/options', [PortalInterventionController::class, 'options'])->name('interventions.options');
             Route::get('interventions', [PortalInterventionController::class, 'index'])->name('interventions.index');

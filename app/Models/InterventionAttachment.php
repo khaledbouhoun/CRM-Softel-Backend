@@ -8,6 +8,11 @@ class InterventionAttachment extends Model
 {
     protected $guarded = [];
 
+    protected function casts(): array
+    {
+        return ['is_hotfix' => 'boolean'];
+    }
+
     /** Shown inline (preview) instead of downloaded: only types a browser renders safely. */
     public const PREVIEWABLE = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
 

@@ -110,3 +110,67 @@ CRM_PORTAL_LOGIN_ATTEMPTS=5
 5. Add a Windows scheduled task running `php artisan schedule:run` every minute (hold expiry).
 6. Website server: `softel-website/composer.lock` pins Symfony 8, so the website needs **PHP 8.4 or newer** (the CRM backend still runs on PHP 8.2+). Use `composer install` with that PHP, never `--ignore-platform-req`.
 7. Expose **only** `/api/portal/` to the website host through the reverse proxy; keep `/api/v1/` LAN-only (the app also enforces it). Do not open the LAN port to the internet.
+
+---
+
+## Billing (cash only)
+
+Maintenance & support is renewed in cash: the website creates a **proforma slip**, the customer pays at the office or to a
+technician, and staff confirm the cash in the CRM. There is no payment gateway. Everything is keyed on the **customer**
+(the converted prospect), so every portal account of one company sees the same subscription and invoices.
+
+Tables: `subscriptions` (`lifetime_license` never expires; `maintenance` has `expires_at`), `renewal_requests`
+(`pending_quote` -> `quoted` -> `paid_cash`, or `rejected`; years / `workstations_count` / `dossiers_count` / `notes`; reference `PF-YYYY-NNNN` is generated when staff quote), `invoices` (`license` | `maintenance_renewal`, `pending_cash` | `paid_cash`,
+reference `SOF-YYYY-NNNN`, optional scanned receipt). Prices are whole DZD and are quoted by staff per request (no fixed price).
+
+**Calendar-year co-terming:** maintenance always ends on a 31 December. A new customer gets free maintenance until 31 Dec of the purchase year when converted before 1 April, otherwise until 31 Dec of the following year (`BillingService::calculateFirstFreeExpiry`, applied on prospect conversion). Each paid renewal adds whole calendar years (`expires_at + years`, end of year); a lapsed plan is renewed from the current calendar year.
+
+Customer portal (`/api/portal/v1`, customers only, otherwise `403 CUSTOMER_REQUIRED`):
+
+| Endpoint | Notes |
+|---|---|
+| `GET /billing` | `license`, `subscription {status: active/expiring_soon/expired/none, is_active, days_remaining, starts_at, expires_at}`, `pending_renewal`, `invoices[]` |
+| `POST /billing/renew {years, workstations_count, dossiers_count, notes?}` | creates (or updates the open) quote request, status `pending_quote`; no invoice until staff quote it |
+| `GET /billing/invoices/{id}` | streams the PDF; `404` until staff uploaded one |
+| `GET /overview` | gained `maintenance`, `open_interventions_count`, `awaiting_customer_count`, `upcoming_appointments_count` |
+| `GET /releases` | each release has `maintenance_required`; `meta.maintenance_active`; locked versions have no `installer` and the download returns `403 MAINTENANCE_REQUIRED` |
+
+Release rule: while maintenance is active every version is downloadable. Once it has expired, versions released **after**
+the expiry date are locked. Customers with no maintenance plan set up yet are not restricted.
+
+Staff (`/api/v1/billing`, LAN only, optional `X-Employee-Name`):
+
+| Endpoint | Notes |
+|---|---|
+| `GET /subscriptions` | customers + maintenance status. `status=active\|expiring_soon\|expired\|none`, `search`, `has_pending_renewal`, `sort=name\|expires_at\|converted_at`, `direction`, `per_page` |
+| `GET /customers/{prospect}` | license, maintenance, renewal requests, invoices |
+| `PUT /customers/{prospect}/maintenance {starts_at, expires_at}` | set the period directly (first setup / corrections) |
+| `POST /customers/{prospect}/invoices {type, amount_dzd, status?, paid_at?}` | manual invoice (e.g. the license invoice) |
+| `POST /renewal-requests/{id}/quote {amount_dzd}` | staff issue the proforma: status `quoted`, `PF-` reference, `pending_cash` invoice |
+| `POST /renewal-requests/{id}/mark-paid {paid_at?}` | only for a `quoted` request: invoice `paid_cash`, request `paid_cash`, maintenance extended by `years` calendar years (ends 31 Dec) |
+| `POST /invoices/{id}/mark-paid {paid_at?}` | same for a standalone invoice (a renewal invoice confirms its request) |
+| `POST/GET/DELETE /invoices/{id}/receipt` | upload (`receipt`: pdf/jpg/png), view, remove the scanned receipt |
+
+`php artisan billing:sync-subscriptions` (scheduled daily) flags lapsed plans as `expired`; the state is also computed live.
+
+
+## Private hotfix patches
+
+Staff attach a file to a customer-visible intervention reply with `is_hotfix=1` (multipart `files[]` on `POST /interventions/{id}/messages`).
+The attachment is returned with `is_hotfix: true` (staff and portal). Portal downloads of a hotfix require an active maintenance plan
+(`403 MAINTENANCE_REQUIRED` once it has lapsed); internal notes can never carry a hotfix.
+
+
+## Public product catalogue (marketing website)
+
+The CRM is the single source of truth for the products shown on softel.dz. No authentication, read-only, cacheable (`Cache-Control: public, max-age=300`):
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/public/v1/products` | products with `is_active` and `is_active_on_web`, sorted by `sort_order` |
+| `GET /api/public/v1/products/{slug}` | one product (404 `NOT_FOUND` when hidden or unknown) |
+
+Each item returns `title`, `summary`, `description` (objects keyed `ar`/`fr`/`en`), `tech_stack` (`{ar: [], fr: [], en: []}`), `image_url` (absolute), `gallery`, `sort_order`.
+`?locale=ar|fr|en` (or `X-Locale`) adds a resolved `localized` block. Missing translations fall back to English, then to the product's CRM name / description / features.
+Staff edit the texts through `PUT /api/v1/products/{id}` (`title_i18n`, `summary_i18n`, `description_i18n`, `tech_stack_i18n`, `sort_order`, `is_active_on_web`, `slug`, `image_path`).
+The website's former local catalogue is imported with `php artisan db:seed --class=PublicProductsSeeder` (idempotent, matched on slug).
